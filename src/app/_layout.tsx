@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import AppTabs from '@/components/app-tabs';
 import { Colors } from '@/constants/theme';
+import { SavedTvsProvider } from '@/services/saved-tvs-context';
 
 const navigationTheme: Theme = {
   ...DarkTheme,
@@ -20,7 +21,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={navigationTheme}>
       <StatusBar style="light" />
-      <AppTabs />
+      <SavedTvsProvider>
+        <AppTabs />
+      </SavedTvsProvider>
     </ThemeProvider>
   );
 }

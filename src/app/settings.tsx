@@ -1,12 +1,15 @@
 import Constants from 'expo-constants';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { AddTvForm } from '@/components/add-tv-form';
+import { Button } from '@/components/button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MinTouchTarget, Radius, Spacing } from '@/constants/theme';
+import { Colors, MinTouchTarget, Radius, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
+import { useSavedTvs } from '@/services/saved-tvs-context';
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
@@ -15,7 +18,7 @@ export default function SettingsScreen() {
   return (
     <Screen title={t('settings.title')}>
       <Section title={t('settings.section.tv')}>
-        <Row label={t('settings.tv.none')} note={t('settings.tv.comingSoon')} />
+        <SavedTvsSection />
       </Section>
 
       <Section title={t('settings.section.language')}>
@@ -31,6 +34,53 @@ export default function SettingsScreen() {
         <Row label={t('settings.about.disclaimer')} />
       </Section>
     </Screen>
+  );
+}
+
+function SavedTvsSection() {
+  const { t } = useTranslation();
+  const { status, tvs, storageError, removeTv } = useSavedTvs();
+  const [adding, setAdding] = useState(false);
+
+  if (status === 'loading') {
+    return <Row label={t('common.loading')} />;
+  }
+
+  return (
+    <>
+      {storageError ? (
+        <ThemedText type="small" style={styles.errorText} accessibilityRole="alert">
+          {t('settings.tv.storageError')}
+        </ThemedText>
+      ) : null}
+
+      {tvs.length === 0 && !adding ? <Row label={t('settings.tv.none')} /> : null}
+
+      {tvs.map((tv) => (
+        <View key={tv.id} style={styles.tvRow}>
+          <View style={styles.tvInfo} accessible>
+            <ThemedText type="small">{tv.name}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {tv.ipAddress}
+            </ThemedText>
+          </View>
+          <Button
+            label={t('settings.tv.remove')}
+            variant="danger"
+            accessibilityLabel={`${t('settings.tv.remove')}: ${tv.name}`}
+            onPress={() => removeTv(tv.id)}
+          />
+        </View>
+      ))}
+
+      {adding ? (
+        <AddTvForm onDone={() => setAdding(false)} />
+      ) : (
+        <View style={styles.addButton}>
+          <Button label={t('settings.tv.add')} onPress={() => setAdding(true)} />
+        </View>
+      )}
+    </>
   );
 }
 
@@ -91,5 +141,26 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     flexShrink: 1,
+  },
+  tvRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
+  tvInfo: {
+    flexShrink: 1,
+    gap: Spacing.half,
+  },
+  addButton: {
+    alignItems: 'flex-start',
+    paddingVertical: Spacing.three,
+  },
+  errorText: {
+    color: Colors.danger,
+    paddingTop: Spacing.three,
   },
 });

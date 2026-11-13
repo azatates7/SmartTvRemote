@@ -62,6 +62,19 @@ export interface DiscoveredTv {
   protocolId: string;
 }
 
+/**
+ * A TV the user saved on this device. Metadata only — never credentials.
+ * Saving does not mean the TV is reachable or supported; that is decided by a connection check.
+ */
+export interface SavedTv {
+  id: string;
+  name: string;
+  /** Private IPv4, validated by `parsePrivateIPv4`. */
+  ipAddress: string;
+  /** Epoch milliseconds. */
+  addedAt: number;
+}
+
 export interface TvConnection {
   tv: DiscoveredTv;
   connectedAt: number;

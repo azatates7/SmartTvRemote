@@ -14,7 +14,7 @@ type ScreenProps = {
 export function Screen({ title, children }: ScreenProps) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <ThemedText type="subtitle" accessibilityRole="header" style={styles.title}>
           {title}
         </ThemedText>

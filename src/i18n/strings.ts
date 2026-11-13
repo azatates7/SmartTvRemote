@@ -13,7 +13,8 @@ export const en = {
   'home.title': 'Home',
   'home.noTv.title': 'No TV saved yet',
   'home.noTv.message':
-    'Adding a TV (discovery and manual IP entry) is not available yet. Your phone and TV will need to be on the same Wi-Fi network.',
+    'Add your TV by its IP address in Settings > TV. Your phone and TV must be on the same Wi-Fi network.',
+  'home.tv.notChecked': 'Connection not checked yet',
 
   'guide.title': 'TV Guide',
   'guide.unsupported.title': 'Guide not available',
@@ -33,7 +34,9 @@ export const en = {
   'settings.title': 'Settings',
   'settings.section.tv': 'TV',
   'settings.tv.none': 'No saved TV',
-  'settings.tv.comingSoon': 'Discovery and manual IP entry are coming in a later version.',
+  'settings.tv.add': 'Add TV',
+  'settings.tv.remove': 'Remove',
+  'settings.tv.storageError': 'Could not access saved TVs on this device. Changes may not be kept.',
   'settings.section.language': 'Language',
   'settings.language.current': 'App language',
   'settings.language.followsDevice': 'Follows your device language (Turkish or English).',
@@ -41,6 +44,21 @@ export const en = {
   'settings.about.version': 'Version',
   'settings.about.disclaimer':
     'Independent app. Not affiliated with, endorsed by or sponsored by Toshiba or Vestel.',
+
+  'addTv.name.label': 'Name (optional)',
+  'addTv.name.placeholder': 'Living room TV',
+  'addTv.ip.label': 'TV IP address',
+  'addTv.ip.hint': 'Find it on the TV under Settings > Network, or in your router.',
+  'addTv.error.empty': 'Enter the TV’s IP address.',
+  'addTv.error.invalidFormat': 'Enter an address like 192.168.1.50.',
+  'addTv.error.notPrivate': 'Only local network addresses are allowed (192.168.x.x, 10.x.x.x or 172.16–31.x.x).',
+  'addTv.error.duplicate': 'A TV with this IP address is already saved.',
+  'addTv.noCheckNote':
+    'The TV is only saved on this device. The app does not contact the TV yet; connection checks come in a later version.',
+
+  'common.save': 'Save',
+  'common.cancel': 'Cancel',
+  'common.loading': 'Loading…',
 
   'language.name': 'English',
 } as const;
@@ -57,7 +75,8 @@ export const tr: Record<StringKey, string> = {
   'home.title': 'Ana Sayfa',
   'home.noTv.title': 'Henüz kayıtlı TV yok',
   'home.noTv.message':
-    'TV ekleme (otomatik bulma ve manuel IP girişi) henüz hazır değil. Telefonunuz ve TV aynı Wi-Fi ağında olmalıdır.',
+    'TV’nizi Ayarlar > Televizyon bölümünden IP adresiyle ekleyebilirsiniz. Telefonunuz ve TV aynı Wi-Fi ağında olmalıdır.',
+  'home.tv.notChecked': 'Bağlantı henüz kontrol edilmedi',
 
   'guide.title': 'TV Rehberi',
   'guide.unsupported.title': 'Rehber kullanılamıyor',
@@ -77,7 +96,9 @@ export const tr: Record<StringKey, string> = {
   'settings.title': 'Ayarlar',
   'settings.section.tv': 'Televizyon',
   'settings.tv.none': 'Kayıtlı TV yok',
-  'settings.tv.comingSoon': 'Otomatik bulma ve manuel IP girişi sonraki bir sürümde eklenecek.',
+  'settings.tv.add': 'TV ekle',
+  'settings.tv.remove': 'Kaldır',
+  'settings.tv.storageError': 'Bu cihazdaki kayıtlı TV’lere erişilemedi. Değişiklikler saklanmayabilir.',
   'settings.section.language': 'Dil',
   'settings.language.current': 'Uygulama dili',
   'settings.language.followsDevice': 'Cihazınızın dilini kullanır (Türkçe veya İngilizce).',
@@ -85,6 +106,21 @@ export const tr: Record<StringKey, string> = {
   'settings.about.version': 'Sürüm',
   'settings.about.disclaimer':
     'Bağımsız bir uygulamadır. Toshiba veya Vestel ile bağlantılı değildir, onlar tarafından onaylanmamış veya desteklenmemiştir.',
+
+  'addTv.name.label': 'Ad (isteğe bağlı)',
+  'addTv.name.placeholder': 'Salon TV',
+  'addTv.ip.label': 'TV IP adresi',
+  'addTv.ip.hint': 'TV’de Ayarlar > Ağ bölümünde veya modem arayüzünde bulabilirsiniz.',
+  'addTv.error.empty': 'TV’nin IP adresini girin.',
+  'addTv.error.invalidFormat': '192.168.1.50 gibi bir adres girin.',
+  'addTv.error.notPrivate': 'Yalnızca yerel ağ adreslerine izin verilir (192.168.x.x, 10.x.x.x veya 172.16–31.x.x).',
+  'addTv.error.duplicate': 'Bu IP adresiyle kayıtlı bir TV zaten var.',
+  'addTv.noCheckNote':
+    'TV yalnızca bu cihaza kaydedilir. Uygulama henüz TV’ye bağlanmıyor; bağlantı kontrolü sonraki bir sürümde eklenecek.',
+
+  'common.save': 'Kaydet',
+  'common.cancel': 'Vazgeç',
+  'common.loading': 'Yükleniyor…',
 
   'language.name': 'Türkçe',
 };
