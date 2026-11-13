@@ -8,9 +8,11 @@
     "scheme": "smarttvremote",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.azatates.smarttvremote",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.azatates.smarttvremote",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

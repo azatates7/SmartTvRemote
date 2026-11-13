@@ -294,14 +294,6 @@ Keep protocol-specific parsing, HTTP transport and command mapping inside the ad
 
 Do not create this structure wholesale before reviewing the existing starter app and agreeing the first vertical slice.
 
-## Environment Requirements (reference)
-
-- Node.js 22.11 or newer.
-- JDK 17.
-- Android Studio, Android SDK, Build Tools, Emulator and Platform Tools.
-- macOS + Xcode for local iOS signing/builds (or a validated cloud build route).
-- Git and Visual Studio Code.
-
 ---
 
 # 5. Initial Plan to Review Before Implementation
