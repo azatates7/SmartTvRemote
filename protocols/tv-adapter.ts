@@ -1,4 +1,4 @@
-import type { DiscoveredTv, RemoteKey, TvCapability, TvConnection } from '../domain/tv';
+import type { DiscoveredTv, RemoteKey, TvCapability, TvConnection } from '../src/domain/tv';
 
 /**
  * Boundary between the app and a TV platform protocol (AGENTS.md §3.3).
