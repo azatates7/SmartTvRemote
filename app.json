@@ -9,7 +9,13 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "bundleIdentifier": "com.azatates.smarttvremote",
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "SmartTvRemote uses your local network to find and control TVs on the same Wi-Fi.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
     },
     "android": {
       "package": "com.azatates.smarttvremote",
@@ -25,6 +31,9 @@
       "output": "server",
       "favicon": "./assets/images/favicon.png"
     },
+    "locales": {
+      "tr": "./locales/tr.json"
+    },
     "plugins": [
       "expo-router",
       [
@@ -33,6 +42,23 @@
           "backgroundColor": "#0B0C0D",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      [
+        "expo-localization",
+        {
+          "supportedLocales": [
+            "en",
+            "tr"
+          ]
         }
       ]
     ],

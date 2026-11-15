@@ -13,7 +13,7 @@ export const en = {
   'home.title': 'Home',
   'home.noTv.title': 'No TV saved yet',
   'home.noTv.message':
-    'Add your TV by its IP address in Settings > TV. Your phone and TV must be on the same Wi-Fi network.',
+    'Connect your phone to the same Wi-Fi network as your TV, then search below.',
   'home.tv.notChecked': 'Connection not checked yet',
 
   'guide.title': 'TV Guide',
@@ -34,7 +34,8 @@ export const en = {
   'settings.title': 'Settings',
   'settings.section.tv': 'TV',
   'settings.tv.none': 'No saved TV',
-  'settings.tv.add': 'Add TV',
+  'settings.tv.addByIp': 'Add by IP address',
+  'settings.tv.manualHint': 'TV not found? You can enter its IP address instead.',
   'settings.tv.remove': 'Remove',
   'settings.tv.storageError': 'Could not access saved TVs on this device. Changes may not be kept.',
   'settings.section.language': 'Language',
@@ -54,7 +55,35 @@ export const en = {
   'addTv.error.notPrivate': 'Only local network addresses are allowed (192.168.x.x, 10.x.x.x or 172.16–31.x.x).',
   'addTv.error.duplicate': 'A TV with this IP address is already saved.',
   'addTv.noCheckNote':
-    'The TV is only saved on this device. The app does not contact the TV yet; connection checks come in a later version.',
+    'Saving does not contact the TV; it is only stored on this device. You can check the connection from Home.',
+
+  'discover.intro':
+    'Searches your Wi-Fi network for Smart Center TVs. The TV must be on, with Virtual Remote enabled.',
+  'discover.start': 'Search for TVs on Wi-Fi',
+  'discover.again': 'Search again',
+  'discover.stop': 'Stop',
+  'discover.preparing': 'Preparing…',
+  'discover.scanning': 'Searching…',
+  'discover.noneFound':
+    'No TV found. Check that the TV is on, Virtual Remote is enabled, and the phone is not on a guest Wi-Fi.',
+  'discover.respondedOnPort': 'Responded on the Smart Center port',
+  'discover.add': 'Add',
+  'discover.alreadySaved': 'Saved',
+  'discover.error.noWifi': 'Connect the phone to Wi-Fi (the same network as the TV) and try again.',
+  'discover.error.unknown': 'The search failed for an unknown reason.',
+
+  'check.button': 'Check connection',
+  'check.checking': 'Checking…',
+  'check.responded': 'The TV responded',
+  'check.respondedWithError': 'Something responded, but with an error status',
+  'check.experimentalNote':
+    'Experimental: this only shows that the address answered. It does not mean the TV is supported.',
+  'check.error.invalidAddress': 'The saved IP address is not valid.',
+  'check.error.timeout':
+    'No response in time. Check that the TV is on, Virtual Remote is enabled, and both devices are on the same Wi-Fi.',
+  'check.error.unreachable':
+    'Could not reach the TV. Check the IP address, Wi-Fi connection and (on iPhone) local network permission.',
+  'check.error.unknown': 'The check failed for an unknown reason.',
 
   'common.save': 'Save',
   'common.cancel': 'Cancel',
@@ -75,7 +104,7 @@ export const tr: Record<StringKey, string> = {
   'home.title': 'Ana Sayfa',
   'home.noTv.title': 'Henüz kayıtlı TV yok',
   'home.noTv.message':
-    'TV’nizi Ayarlar > Televizyon bölümünden IP adresiyle ekleyebilirsiniz. Telefonunuz ve TV aynı Wi-Fi ağında olmalıdır.',
+    'Telefonunuzu TV ile aynı Wi-Fi ağına bağlayın, ardından aşağıdan arama yapın.',
   'home.tv.notChecked': 'Bağlantı henüz kontrol edilmedi',
 
   'guide.title': 'TV Rehberi',
@@ -96,7 +125,8 @@ export const tr: Record<StringKey, string> = {
   'settings.title': 'Ayarlar',
   'settings.section.tv': 'Televizyon',
   'settings.tv.none': 'Kayıtlı TV yok',
-  'settings.tv.add': 'TV ekle',
+  'settings.tv.addByIp': 'IP adresiyle ekle',
+  'settings.tv.manualHint': 'TV bulunamadı mı? IP adresini elle girebilirsiniz.',
   'settings.tv.remove': 'Kaldır',
   'settings.tv.storageError': 'Bu cihazdaki kayıtlı TV’lere erişilemedi. Değişiklikler saklanmayabilir.',
   'settings.section.language': 'Dil',
@@ -116,7 +146,35 @@ export const tr: Record<StringKey, string> = {
   'addTv.error.notPrivate': 'Yalnızca yerel ağ adreslerine izin verilir (192.168.x.x, 10.x.x.x veya 172.16–31.x.x).',
   'addTv.error.duplicate': 'Bu IP adresiyle kayıtlı bir TV zaten var.',
   'addTv.noCheckNote':
-    'TV yalnızca bu cihaza kaydedilir. Uygulama henüz TV’ye bağlanmıyor; bağlantı kontrolü sonraki bir sürümde eklenecek.',
+    'Kaydetmek TV’ye bağlanmaz, TV yalnızca bu cihaza kaydedilir. Bağlantıyı Ana Sayfa’dan kontrol edebilirsiniz.',
+
+  'discover.intro':
+    'Wi-Fi ağınızda Smart Center destekli TV’leri arar. TV açık ve Sanal Kumanda (Virtual Remote) etkin olmalıdır.',
+  'discover.start': 'Wi-Fi’da TV ara',
+  'discover.again': 'Tekrar ara',
+  'discover.stop': 'Durdur',
+  'discover.preparing': 'Hazırlanıyor…',
+  'discover.scanning': 'Aranıyor…',
+  'discover.noneFound':
+    'TV bulunamadı. TV’nin açık, Sanal Kumanda’nın etkin ve telefonun misafir Wi-Fi’da olmadığını kontrol edin.',
+  'discover.respondedOnPort': 'Smart Center portunda yanıt verdi',
+  'discover.add': 'Ekle',
+  'discover.alreadySaved': 'Kayıtlı',
+  'discover.error.noWifi': 'Telefonu Wi-Fi’a (TV ile aynı ağa) bağlayıp tekrar deneyin.',
+  'discover.error.unknown': 'Arama bilinmeyen bir nedenle başarısız oldu.',
+
+  'check.button': 'Bağlantıyı kontrol et',
+  'check.checking': 'Kontrol ediliyor…',
+  'check.responded': 'TV yanıt verdi',
+  'check.respondedWithError': 'Bir yanıt geldi ama hata durumuyla',
+  'check.experimentalNote':
+    'Deneysel: bu yalnızca adresin yanıt verdiğini gösterir. TV’nin desteklendiği anlamına gelmez.',
+  'check.error.invalidAddress': 'Kayıtlı IP adresi geçerli değil.',
+  'check.error.timeout':
+    'Zamanında yanıt gelmedi. TV’nin açık, Sanal Kumanda’nın (Virtual Remote) etkin ve iki cihazın aynı Wi-Fi’da olduğunu kontrol edin.',
+  'check.error.unreachable':
+    'TV’ye ulaşılamadı. IP adresini, Wi-Fi bağlantısını ve (iPhone’da) yerel ağ iznini kontrol edin.',
+  'check.error.unknown': 'Kontrol bilinmeyen bir nedenle başarısız oldu.',
 
   'common.save': 'Kaydet',
   'common.cancel': 'Vazgeç',

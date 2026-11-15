@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { AddTvForm } from '@/components/add-tv-form';
 import { Button } from '@/components/button';
+import { DiscoverTvPanel } from '@/components/discover-tv-panel';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -76,9 +77,19 @@ function SavedTvsSection() {
       {adding ? (
         <AddTvForm onDone={() => setAdding(false)} />
       ) : (
-        <View style={styles.addButton}>
-          <Button label={t('settings.tv.add')} onPress={() => setAdding(true)} />
-        </View>
+        <>
+          <DiscoverTvPanel />
+          <View style={styles.addButton}>
+            <ThemedText type="small" themeColor="textSecondary">
+              {t('settings.tv.manualHint')}
+            </ThemedText>
+            <Button
+              label={t('settings.tv.addByIp')}
+              variant="secondary"
+              onPress={() => setAdding(true)}
+            />
+          </View>
+        </>
       )}
     </>
   );
@@ -157,7 +168,11 @@ const styles = StyleSheet.create({
   },
   addButton: {
     alignItems: 'flex-start',
-    paddingVertical: Spacing.three,
+    gap: Spacing.two,
+    paddingBottom: Spacing.three,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+    paddingTop: Spacing.three,
   },
   errorText: {
     color: Colors.danger,

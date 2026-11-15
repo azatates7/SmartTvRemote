@@ -41,7 +41,7 @@ TV IP address:                   (local only, e.g. 192.168.1.x)
 
 -- Client used for the test --
 Device / OS:                     (e.g. Windows 11 PC, PowerShell 7.x)
-Tool:                            scripts/tv-probe.ps1 (commit: )
+Tool:                            scripts/tv-probe.ps1 / in-app Home > Check connection (commit: )
 
 -- Results --
 GET /apps/SmartCenter

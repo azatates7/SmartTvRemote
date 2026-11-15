@@ -80,13 +80,19 @@ Codes confirmed by **three or more independent sources**: 1012, 1013, 1016, 1017
 | B. Subnet probe | Send `GET :56789/apps/SmartCenter` with a short timeout to each host in the phone's /24 subnet (S1 does this) | Needs the phone's own IP (e.g. `expo-network`). No multicast, so no iOS multicast entitlement. About 254 short requests per scan |
 | C. SSDP / DIAL | UDP multicast `M-SEARCH` to `239.255.255.250:1900`, `ST: urn:dial-multiscreen-org:service:dial:1` (S2) | Needs a native UDP module, and on iOS the restricted multicast entitlement (requires Apple approval) |
 
-**Proposal (pending TV test):** A first, then B. Defer C unless A and B prove insufficient. This matches the AGENTS.md guidance to prefer discovery that avoids restricted multicast.
+**Status (2026-11-15):** B is implemented as the primary flow (`src/protocols/smart-center/discover.ts`, /24 only, 32 parallel probes, 1.2 s timeout each); A remains as a fallback. Neither is verified on a real TV yet.
+
+**Original proposal:** A first, then B. Defer C unless A and B prove insufficient. This matches the AGENTS.md guidance to prefer discovery that avoids restricted multicast.
 
 ## 6. Platform transport implications
 
-- Traffic is **plain HTTP**.
-  - **Android 9+:** blocks cleartext HTTP by default in release builds. This needs an explicit allowance (e.g. `expo-build-properties` → `android.usesCleartextTraffic`, or a network security config). Verify when the Development Build is set up.
-  - **iOS:** App Transport Security blocks plain HTTP by default. `NSAllowsLocalNetworking` exempts local addresses. `NSLocalNetworkUsageDescription` is required for the permission prompt.
+- Traffic is **plain HTTP**. Configured in `app.json` (2026-11-15), verified with `expo prebuild` output only (not yet on a device):
+  - **Android 9+** blocks cleartext HTTP by default in release builds → `expo-build-properties` `android.usesCleartextTraffic: true`.
+    Android's network security config cannot scope cleartext to IP ranges, so the allowance is app-wide.
+    Mitigation: the app only ever contacts private IPv4 addresses (`src/domain/ip-address.ts`).
+  - **iOS** App Transport Security blocks plain HTTP by default → `NSAppTransportSecurity.NSAllowsLocalNetworking: true` (local addresses only).
+  - **iOS 14+** local network permission prompt → `NSLocalNetworkUsageDescription` (English in `app.json`, Turkish in `locales/tr.json`).
+  - Not added yet: `NSBonjourServices` and the multicast entitlement. Neither is needed for manual IP or subnet probing (§5 options A/B).
 - **Threat model:** any device on the same LAN can send the same commands. The protocol shows no authentication in any reviewed source. Never send secrets over it.
 - A React Native `fetch` with an `AbortController` timeout should be enough for transport, so no native module is expected for options A/B. Confirm this on a device.
 
