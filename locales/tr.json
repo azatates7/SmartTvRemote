@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "SmartTvRemote, aynı Wi-Fi ağındaki TV'leri bulmak ve kontrol etmek için yerel ağınızı kullanır."
+  }
+}

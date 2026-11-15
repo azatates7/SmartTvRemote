@@ -187,6 +187,8 @@ Example request characteristics reported by that community reference:
 
 This is an experimental community reference, not an official or universal Toshiba API. Verify against the actual TV before implementation. Plain HTTP may expose commands on the LAN; document the threat model and do not send secrets over it.
 
+Community sources disagree on body format (quoted vs unquoted key code), headers and path; a read-only `GET` on the same endpoint is reported to return DIAL status XML. See `docs/protocol-notes.md` for the source comparison and candidate codes, and record real-TV results in `docs/compatibility.md`.
+
 Example XML shape only:
 
 ```xml
@@ -293,14 +295,6 @@ Keep protocol-specific parsing, HTTP transport and command mapping inside the ad
 - `docs/compatibility.md`: device/firmware test matrix and evidence.
 
 Do not create this structure wholesale before reviewing the existing starter app and agreeing the first vertical slice.
-
-## Environment Requirements (reference)
-
-- Node.js 22.11 or newer.
-- JDK 17.
-- Android Studio, Android SDK, Build Tools, Emulator and Platform Tools.
-- macOS + Xcode for local iOS signing/builds (or a validated cloud build route).
-- Git and Visual Studio Code.
 
 ---
 
