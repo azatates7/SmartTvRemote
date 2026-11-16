@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs><filter id="sh" x="-30%" y="-30%" width="160%" height="160%">
+  <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#7A2A08" flood-opacity="0.35"/></filter></defs>
+<g transform="translate(512 512) scale(0.72) translate(-512 -512)">
+  <rect x="362" y="222" width="300" height="580" rx="150" fill="#FFFFFF" filter="url(#sh)"/>
+  <circle cx="512" cy="412" r="104" fill="#F26522"/>
+  <circle cx="512" cy="412" r="42" fill="#FFFFFF"/>
+  <rect x="447" y="572" width="130" height="30" rx="15" fill="#3A2B24"/>
+  <rect x="447" y="636" width="130" height="30" rx="15" fill="#3A2B24"/>
+</g></svg>
