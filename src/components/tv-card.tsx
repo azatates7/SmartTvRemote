@@ -1,49 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
-import { TvError, type SavedTv, type TvErrorCode } from '@/domain/tv';
+import { Colors, Radius, Spacing } from '@/constants/theme';
+import type { SavedTv, TvErrorCode } from '@/domain/tv';
 import { useTranslation, type StringKey } from '@/i18n';
-import { probeSmartCenter, type SmartCenterProbeResult } from '@/protocols/smart-center/probe';
-
-type CheckState =
-  | { kind: 'idle' }
-  | { kind: 'checking' }
-  | { kind: 'responded'; result: SmartCenterProbeResult }
-  | { kind: 'failed'; code: TvErrorCode };
+import { useConnection } from '@/services/connection-context';
 
 const errorKeys: Partial<Record<TvErrorCode, StringKey>> = {
   invalidAddress: 'check.error.invalidAddress',
   timeout: 'check.error.timeout',
   unreachable: 'check.error.unreachable',
+  unsupported: 'check.error.unsupported',
 };
 
-/** Saved TV with an experimental, read-only connection check. Results are not persisted. */
+/** Saved TV on Home: connect / disconnect. Only one TV is connected at a time. */
 export function TvCard({ tv }: { tv: SavedTv }) {
   const { t } = useTranslation();
-  const [state, setState] = useState<CheckState>({ kind: 'idle' });
-  const abortRef = useRef<AbortController | null>(null);
-
-  // Cancel an in-flight check if the card unmounts (e.g. TV removed).
-  useEffect(() => () => abortRef.current?.abort(), []);
-
-  const check = async () => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setState({ kind: 'checking' });
-
-    try {
-      const result = await probeSmartCenter({ ipAddress: tv.ipAddress, signal: controller.signal });
-      setState({ kind: 'responded', result });
-    } catch (error) {
-      const code = error instanceof TvError ? error.code : 'unknown';
-      if (code !== 'cancelled') setState({ kind: 'failed', code });
-    }
-  };
+  const { state, connect, disconnect } = useConnection();
+  const mine = state.status !== 'disconnected' && state.tv.id === tv.id ? state : null;
 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
@@ -55,70 +31,52 @@ export function TvCard({ tv }: { tv: SavedTv }) {
       </View>
 
       <View accessibilityLiveRegion="polite">
-        <CheckStatus state={state} />
+        {!mine ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            {t('connection.notConnected')}
+          </ThemedText>
+        ) : null}
+        {mine?.status === 'connecting' ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            {t('connection.connecting')}
+          </ThemedText>
+        ) : null}
+        {mine?.status === 'connected' ? (
+          <>
+            <ThemedText type="small" style={styles.ok}>
+              {t('connection.connected')}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {[mine.probe.appName, mine.probe.appState].filter(Boolean).join(' · ')}
+              {` · ${mine.probe.elapsedMs} ms`}
+            </ThemedText>
+          </>
+        ) : null}
+        {mine?.status === 'error' ? (
+          <ThemedText type="small" style={styles.error} accessibilityRole="alert">
+            {t(errorKeys[mine.code] ?? 'check.error.unknown')}
+          </ThemedText>
+        ) : null}
       </View>
 
       <View style={styles.actions}>
-        {state.kind === 'checking' ? null : (
+        {mine?.status === 'connected' ? (
           <Button
-            label={t('check.button')}
+            label={t('connection.disconnect')}
             variant="secondary"
-            accessibilityLabel={`${t('check.button')}: ${tv.name}`}
-            onPress={check}
+            accessibilityLabel={`${t('connection.disconnect')}: ${tv.name}`}
+            onPress={disconnect}
+          />
+        ) : mine?.status === 'connecting' ? null : (
+          <Button
+            label={mine?.status === 'error' ? t('connection.retry') : t('connection.connect')}
+            accessibilityLabel={`${t('connection.connect')}: ${tv.name}`}
+            onPress={() => connect(tv)}
           />
         )}
       </View>
     </ThemedView>
   );
-}
-
-function CheckStatus({ state }: { state: CheckState }) {
-  const { t } = useTranslation();
-
-  switch (state.kind) {
-    case 'idle':
-      return (
-        <ThemedText type="small" themeColor="textSecondary">
-          {t('home.tv.notChecked')}
-        </ThemedText>
-      );
-    case 'checking':
-      return (
-        <ThemedText type="small" themeColor="textSecondary">
-          {t('check.checking')}
-        </ThemedText>
-      );
-    case 'failed':
-      return (
-        <ThemedText type="small" style={styles.error} accessibilityRole="alert">
-          {t(errorKeys[state.code] ?? 'check.error.unknown')}
-        </ThemedText>
-      );
-    case 'responded': {
-      const { result } = state;
-      const ok = result.httpStatus >= 200 && result.httpStatus < 300;
-      return (
-        <View style={styles.result}>
-          <ThemedText type="small" style={ok ? styles.ok : styles.error}>
-            {ok ? t('check.responded') : t('check.respondedWithError')}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {`HTTP ${result.httpStatus} · ${result.elapsedMs} ms`}
-            {result.appName ? ` · ${result.appName}` : ''}
-            {result.appState ? ` (${result.appState})` : ''}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {t('check.experimentalNote')}
-          </ThemedText>
-          {result.body ? (
-            <ThemedText type="small" themeColor="textSecondary" selectable style={styles.raw}>
-              {result.body}
-            </ThemedText>
-          ) : null}
-        </View>
-      );
-    }
-  }
 }
 
 const styles = StyleSheet.create({
@@ -130,21 +88,10 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
   },
-  result: {
-    gap: Spacing.one,
-  },
   ok: {
     color: Colors.accent,
   },
   error: {
     color: Colors.danger,
-  },
-  raw: {
-    fontFamily: Fonts?.mono,
-    fontSize: 12,
-    lineHeight: 16,
-    padding: Spacing.two,
-    borderRadius: Spacing.two,
-    backgroundColor: Colors.background,
   },
 });

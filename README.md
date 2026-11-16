@@ -1,30 +1,22 @@
-# SmartTvRemote
+# App logos (optional)
 
-Cross-platform (Android + iOS) mobile remote for Smart TVs, built with React Native, Expo SDK 58 and Expo Router.
+This folder is empty on purpose. YouTube, Netflix, Prime Video and TOD logos are trademarks of their
+owners; the project does not ship them.
 
-Initial target: Toshiba / Vestel Smart Center–compatible TVs, subject to per-model and per-firmware verification. Not affiliated with Toshiba or Vestel.
+If you decide to use official logos:
 
-> Read [`AGENTS.md`](./AGENTS.md) before contributing. It defines the product scope, delivery phases and engineering rules.
+1. Download them from each brand's official brand-resources page and check its usage guidelines
+   (some brands restrict use inside third-party apps; store review may also ask about it).
+2. Save each one here as a square PNG, about 256×256:
 
-## Status
+   | App         | File name         |
+   |-------------|-------------------|
+   | YouTube     | `youtube.png`     |
+   | Netflix     | `netflix.png`     |
+   | Prime Video | `prime-video.png` |
+   | TOD         | `tod.png`         |
 
-Phase 0 (repository and device reconnaissance). TV protocol support is **not yet verified** on any model.
+3. In `src/constants/app-logos.ts`, uncomment the line for each file you added.
+   Only uncomment lines whose file exists, otherwise the build fails.
 
-## Requirements
-
-- Node.js 22.11+
-- JDK 17, Android Studio, Android SDK / Platform Tools (local Android builds)
-- macOS + Xcode for local iOS builds, or a validated cloud build workflow
-
-## Getting started
-
-```bash
-npm install
-npx expo start
-```
-
-Native LAN features (discovery, TV commands) must be tested with a **Development Build** on a physical device on the same Wi-Fi as the TV. Expo Go and emulators are fine for UI work only.
-
-## License
-
-MIT. See [LICENSE](./LICENSE).
+Apps without a logo keep the letter badge.

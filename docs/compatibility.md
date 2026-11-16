@@ -5,10 +5,9 @@
 
 ## Supported devices
 
-_None verified yet._
-
 | TV model | Product code | Firmware | Region | Discovery | Verified commands | Last tested | Record |
 |----------|--------------|----------|--------|-----------|-------------------|-------------|--------|
+| _TBD_ | _TBD_ | _TBD_ | TR | Wi-Fi /24 scan: found | `GET` status only; no keys yet | 2026-11-16 | TV-001 |
 
 ---
 
@@ -58,4 +57,49 @@ Working body format:
 Required headers:
 Unsupported / no reaction:
 Limitations / notes:
+```
+
+---
+
+### TV-001
+
+```text
+Record ID:        TV-001
+Date:             2026-11-16
+Tester:           project owner
+
+-- TV --
+Brand / Model / Product code / Firmware:  TBD (to be read from Settings > About)
+Region / country setting:                 Turkey (assumed)
+Virtual Remote enabled:                   yes
+
+-- Network --
+Same network as TV:  yes
+TV IP address:       192.168.1.100
+
+-- Client --
+Device / OS:  Android phone, release APK (debug-signed)
+Tool:         in-app Home > Check connection
+
+-- Results --
+GET /apps/SmartCenter
+  HTTP status:  200
+  Elapsed:      86 ms
+  TV state:     on
+  Response body:
+    <?xml version="1.0" encoding="UTF-8"?>
+    <service xmlns="urn:dial-multiscreen-org:schemas:dial" dialVer="2.2">
+      <name>SmartCenter</name>
+      <options allowStop="false"/>
+      <state>running</state>
+      <link rel="run" href="run"/>
+      <additionalData></additionalData>
+    </service>
+
+POST key tests:   not yet run
+
+-- Conclusions --
+Smart Center DIAL service is present and running on this TV (DIAL 2.2).
+Same-network discovery (/24 scan) found the TV.
+Key body format, headers and key codes: still open (protocol-notes.md §7, questions 2–6).
 ```

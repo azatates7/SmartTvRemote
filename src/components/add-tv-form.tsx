@@ -16,14 +16,16 @@ const errorKeys = {
 
 type AddTvFormProps = {
   onDone: () => void;
+  /** IP found by discovery: shown read-only, only the name is asked. */
+  fixedIp?: string;
 };
 
-/** Saves a TV by name + private IP. Makes no network request (connection check comes after the Phase 0 TV test). */
-export function AddTvForm({ onDone }: AddTvFormProps) {
+/** Saves a TV by name + private IP. Saving makes no network request. */
+export function AddTvForm({ onDone, fixedIp }: AddTvFormProps) {
   const { t } = useTranslation();
   const { addTv } = useSavedTvs();
   const [name, setName] = useState('');
-  const [ip, setIp] = useState('');
+  const [ip, setIp] = useState(fixedIp ?? '');
   const [error, setError] = useState<keyof typeof errorKeys | null>(null);
 
   const submit = () => {
@@ -48,53 +50,71 @@ export function AddTvForm({ onDone }: AddTvFormProps) {
           placeholderTextColor={Colors.textSecondary}
           maxLength={MAX_TV_NAME_LENGTH}
           autoCapitalize="words"
-          returnKeyType="next"
+          autoFocus={fixedIp !== undefined}
+          returnKeyType={fixedIp !== undefined ? 'done' : 'next'}
+          onSubmitEditing={fixedIp !== undefined ? submit : undefined}
           accessibilityLabelledBy="tvNameLabel"
           accessibilityLabel={t('addTv.name.label')}
           style={styles.input}
         />
       </View>
 
-      <View style={styles.field}>
-        <ThemedText type="small" themeColor="textSecondary" nativeID="tvIpLabel">
-          {t('addTv.ip.label')}
-        </ThemedText>
-        <TextInput
-          value={ip}
-          onChangeText={(text) => {
-            setIp(text);
-            if (error) setError(null);
-          }}
-          placeholder="192.168.1.50"
-          placeholderTextColor={Colors.textSecondary}
-          keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'decimal-pad'}
-          autoCorrect={false}
-          autoCapitalize="none"
-          maxLength={15}
-          returnKeyType="done"
-          onSubmitEditing={submit}
-          accessibilityLabelledBy="tvIpLabel"
-          accessibilityLabel={t('addTv.ip.label')}
-          style={[styles.input, error && styles.inputError]}
-        />
-        {error ? (
-          <ThemedText
-            type="small"
-            style={styles.errorText}
-            accessibilityRole="alert"
-            accessibilityLiveRegion="polite">
-            {t(errorKeys[error])}
-          </ThemedText>
-        ) : (
+      {fixedIp !== undefined ? (
+        <View style={styles.field} accessible>
           <ThemedText type="small" themeColor="textSecondary">
-            {t('addTv.ip.hint')}
+            {t('addTv.ip.label')}
           </ThemedText>
-        )}
-      </View>
+          <ThemedText type="small">{fixedIp}</ThemedText>
+          {error ? (
+            <ThemedText type="small" style={styles.errorText} accessibilityRole="alert">
+              {t(errorKeys[error])}
+            </ThemedText>
+          ) : null}
+        </View>
+      ) : (
+        <View style={styles.field}>
+          <ThemedText type="small" themeColor="textSecondary" nativeID="tvIpLabel">
+            {t('addTv.ip.label')}
+          </ThemedText>
+          <TextInput
+            value={ip}
+            onChangeText={(text) => {
+              setIp(text);
+              if (error) setError(null);
+            }}
+            placeholder="192.168.1.50"
+            placeholderTextColor={Colors.textSecondary}
+            keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'decimal-pad'}
+            autoCorrect={false}
+            autoCapitalize="none"
+            maxLength={15}
+            returnKeyType="done"
+            onSubmitEditing={submit}
+            accessibilityLabelledBy="tvIpLabel"
+            accessibilityLabel={t('addTv.ip.label')}
+            style={[styles.input, error && styles.inputError]}
+          />
+          {error ? (
+            <ThemedText
+              type="small"
+              style={styles.errorText}
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite">
+              {t(errorKeys[error])}
+            </ThemedText>
+          ) : (
+            <ThemedText type="small" themeColor="textSecondary">
+              {t('addTv.ip.hint')}
+            </ThemedText>
+          )}
+        </View>
+      )}
 
-      <ThemedText type="small" themeColor="textSecondary">
-        {t('addTv.noCheckNote')}
-      </ThemedText>
+      {fixedIp === undefined ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {t('addTv.noCheckNote')}
+        </ThemedText>
+      ) : null}
 
       <View style={styles.actions}>
         <Button label={t('common.cancel')} variant="secondary" onPress={onDone} />

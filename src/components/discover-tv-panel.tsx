@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { AddTvForm } from '@/components/add-tv-form';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import { TvError, type TvErrorCode } from '@/domain/tv';
 import { useTranslation } from '@/i18n';
 import {
-    discoverSmartCenterTvs,
-    type DiscoveredSmartCenter,
-    type DiscoveryProgress,
+  discoverSmartCenterTvs,
+  type DiscoveredSmartCenter,
+  type DiscoveryProgress,
 } from '@/protocols/smart-center/discover';
 import { useSavedTvs } from '@/services/saved-tvs-context';
 
@@ -22,9 +23,11 @@ type ScanState =
 /** Finds TVs on the phone's Wi-Fi (same /24 network) and lets the user save them with one tap. */
 export function DiscoverTvPanel() {
   const { t } = useTranslation();
-  const { tvs, addTv } = useSavedTvs();
+  const { tvs } = useSavedTvs();
   const [state, setState] = useState<ScanState>({ kind: 'idle' });
   const [found, setFound] = useState<DiscoveredSmartCenter[]>([]);
+  /** IP of the found TV the user is currently naming. */
+  const [namingIp, setNamingIp] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -82,6 +85,9 @@ export function DiscoverTvPanel() {
 
       {found.map((tv) => {
         const saved = savedIps.has(tv.ipAddress);
+        if (namingIp === tv.ipAddress && !saved) {
+          return <AddTvForm key={tv.ipAddress} fixedIp={tv.ipAddress} onDone={() => setNamingIp(null)} />;
+        }
         return (
           <View key={tv.ipAddress} style={styles.foundRow}>
             <View style={styles.foundInfo} accessible>
@@ -99,7 +105,7 @@ export function DiscoverTvPanel() {
               <Button
                 label={t('discover.add')}
                 accessibilityLabel={`${t('discover.add')}: ${tv.ipAddress}`}
-                onPress={() => addTv('', tv.ipAddress)}
+                onPress={() => setNamingIp(tv.ipAddress)}
               />
             )}
           </View>

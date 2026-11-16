@@ -84,6 +84,16 @@ Codes confirmed by **three or more independent sources**: 1012, 1013, 1016, 1017
 
 **Original proposal:** A first, then B. Defer C unless A and B prove insufficient. This matches the AGENTS.md guidance to prefer discovery that avoids restricted multicast.
 
+## 5b. App launching via DIAL (2026-11-16, not yet verified on the TV)
+
+TV-001 answers as a **DIAL 2.2** server (`/apps/SmartCenter`), so standard DIAL REST should apply to other apps:
+
+- `GET /apps/<name>` → status XML (`<state>running|stopped</state>`), `404` if the app is not available. Read-only.
+- `POST /apps/<name>` (empty `text/plain` body) → launches the app, `201 Created` expected.
+- Names tried by the app (public DIAL registry): `YouTube`, `Netflix`, `AmazonInstantVideo` (Prime Video).
+- TOD: no public DIAL name found; the app tries `TOD`, `TODTV`, `TOD_TV`, `tod` in order (GET only) and launches with the first that answers 200. TV+ and other local apps: names must be found on the TV before adding them.
+- Implementation: `src/protocols/smart-center/dial-apps.ts`. Paths are restricted to `/apps/[A-Za-z0-9._-]{1,64}`.
+
 ## 6. Platform transport implications
 
 - Traffic is **plain HTTP**. Configured in `app.json` (2026-11-15), verified with `expo prebuild` output only (not yet on a device):
