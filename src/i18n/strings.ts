@@ -59,6 +59,7 @@ export const en = {
 
   'connection.notConnected': 'Not connected',
   'connection.connecting': 'Connecting…',
+  'connection.searching': 'Not at its last address — searching the network…',
   'connection.connected': 'Connected',
   'connection.connect': 'Connect',
   'connection.retry': 'Try again',
@@ -129,6 +130,8 @@ export const en = {
   'discover.respondedOnPort': 'Responded on the Smart Center port',
   'discover.add': 'Add',
   'discover.alreadySaved': 'Saved',
+  'discover.addressUpdated': 'Address updated:',
+  'discover.isNewAddressOf': 'This is the new address of',
   'discover.error.noWifi': 'Connect the phone to Wi-Fi (the same network as the TV) and try again.',
   'discover.error.unknown': 'The search failed for an unknown reason.',
 
@@ -143,6 +146,14 @@ export const en = {
   'common.save': 'Save',
   'common.cancel': 'Cancel',
   'common.loading': 'Loading…',
+
+  'diag.title': 'Diagnostics (temporary)',
+  'diag.intro':
+    'Checks, read-only, where the TV publishes its identity and how apps can be opened. Share the report with the developer.',
+  'diag.needsConnection': 'Connect to a TV from Home first.',
+  'diag.run': 'Run diagnostics',
+  'diag.running': 'Running…',
+  'diag.share': 'Share report',
 
   'language.name': 'English',
 } as const;
@@ -205,6 +216,7 @@ export const tr: Record<StringKey, string> = {
 
   'connection.notConnected': 'Bağlı değil',
   'connection.connecting': 'Bağlanıyor…',
+  'connection.searching': 'Son adresinde yanıt yok — ağda aranıyor…',
   'connection.connected': 'Bağlı',
   'connection.connect': 'Bağlan',
   'connection.retry': 'Tekrar dene',
@@ -275,6 +287,8 @@ export const tr: Record<StringKey, string> = {
   'discover.respondedOnPort': 'Smart Center portunda yanıt verdi',
   'discover.add': 'Ekle',
   'discover.alreadySaved': 'Kayıtlı',
+  'discover.addressUpdated': 'Adres güncellendi:',
+  'discover.isNewAddressOf': 'Bu TV’nin yeni adresi:',
   'discover.error.noWifi': 'Telefonu Wi-Fi’a (TV ile aynı ağa) bağlayıp tekrar deneyin.',
   'discover.error.unknown': 'Arama bilinmeyen bir nedenle başarısız oldu.',
 
@@ -289,6 +303,14 @@ export const tr: Record<StringKey, string> = {
   'common.save': 'Kaydet',
   'common.cancel': 'Vazgeç',
   'common.loading': 'Yükleniyor…',
+
+  'diag.title': 'Tanılama (geçici)',
+  'diag.intro':
+    'TV’nin kimliğini nerede yayımladığını ve uygulamaların nasıl açılabileceğini, yalnızca okuyarak kontrol eder. Raporu geliştiriciyle paylaşın.',
+  'diag.needsConnection': 'Önce Ana Sayfa’dan bir TV’ye bağlanın.',
+  'diag.run': 'Tanılamayı çalıştır',
+  'diag.running': 'Çalışıyor…',
+  'diag.share': 'Raporu paylaş',
 
   'language.name': 'Türkçe',
 };

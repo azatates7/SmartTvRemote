@@ -11,8 +11,9 @@
 import * as Network from 'expo-network';
 
 import { parsePrivateIPv4 } from '@/domain/ip-address';
-import { TvError } from '@/domain/tv';
+import { TvError, type DeviceIdentity } from '@/domain/tv';
 
+import { fetchDeviceIdentity } from './device-info';
 import { probeSmartCenter, type SmartCenterProbeResult } from './probe';
 
 const CONCURRENCY = 32;
@@ -21,6 +22,8 @@ const PER_HOST_TIMEOUT_MS = 1200;
 export type DiscoveredSmartCenter = {
   ipAddress: string;
   probe: SmartCenterProbeResult;
+  /** Stable identity if the TV exposes one (read only for TVs that answered). */
+  identity: DeviceIdentity | null;
 };
 
 export type DiscoveryProgress = { scanned: number; total: number };
@@ -33,6 +36,7 @@ type DiscoverOptions = {
   /** Injected for tests. */
   getPhoneIp?: () => Promise<string>;
   probe?: typeof probeSmartCenter;
+  identify?: typeof fetchDeviceIdentity;
 };
 
 /** Returns the phone's private IPv4 on Wi-Fi/Ethernet, or throws `networkUnavailable`. */
@@ -52,6 +56,7 @@ export async function discoverSmartCenterTvs({
   onFound,
   getPhoneIp = getPhoneIpOnLan,
   probe = probeSmartCenter,
+  identify = fetchDeviceIdentity,
 }: DiscoverOptions = {}): Promise<DiscoveredSmartCenter[]> {
   const phone = parsePrivateIPv4(await getPhoneIp());
   // getIpAddressAsync returns "0.0.0.0" or a public/cellular address when not on a home LAN.
@@ -75,7 +80,8 @@ export async function discoverSmartCenterTvs({
       try {
         const result = await probe({ ipAddress, timeoutMs: PER_HOST_TIMEOUT_MS, signal });
         if (result.httpStatus >= 200 && result.httpStatus < 300) {
-          const tv = { ipAddress, probe: result };
+          const identity = await identify({ ipAddress, signal });
+          const tv = { ipAddress, probe: result, identity };
           found.push(tv);
           onFound?.(tv);
         }

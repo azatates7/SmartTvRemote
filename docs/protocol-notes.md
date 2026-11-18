@@ -94,6 +94,24 @@ TV-001 answers as a **DIAL 2.2** server (`/apps/SmartCenter`), so standard DIAL 
 - TOD: no public DIAL name found; the app tries `TOD`, `TODTV`, `TOD_TV`, `tod` in order (GET only) and launches with the first that answers 200. TV+ and other local apps: names must be found on the TV before adding them.
 - Implementation: `src/protocols/smart-center/dial-apps.ts`. Paths are restricted to `/apps/[A-Za-z0-9._-]{1,64}`.
 
+## 5c. Device identity (2026-11-17, location not yet verified on the TV)
+
+DHCP can give the TV a new IP after a restart, so the IP is not an identity.
+UPnP/DIAL device descriptions carry a stable `<UDN>` (`uuid:…`) plus `friendlyName` / `modelName`.
+
+- The description URL is normally announced via SSDP `LOCATION` (UDP), which the app does not use.
+  `src/protocols/smart-center/device-info.ts` tries `:56790/dd.xml`, `:56789/dd.xml`,
+  `:56790/description.xml`, `:56790/` (GET only) and keeps the first response with a valid UDN.
+- `scripts/tv-explore.py <TV_IP>` (Python, stdlib) sends one SSDP M-SEARCH and prints the real
+  `LOCATION` and description; use it to correct the candidate list.
+- Rules (`src/domain/saved-tvs.ts`): same UDN → update address, never a second entry; a saved TV with
+  a different UDN at the same IP has a stale address; records without UDN gain one on the next
+  successful connection.
+- On connect, if the TV does not answer at its saved address and its UDN is known, the app scans
+  the /24 network for the same UDN and reconnects at the new address.
+- Without a UDN the app cannot tell TVs apart; the discovery panel then asks the user
+  ("This is the new address of …"). A DHCP reservation in the router avoids the problem entirely.
+
 ## 6. Platform transport implications
 
 - Traffic is **plain HTTP**. Configured in `app.json` (2026-11-15), verified with `expo prebuild` output only (not yet on a device):

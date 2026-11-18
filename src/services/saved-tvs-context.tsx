@@ -4,25 +4,36 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 
 import { parsePrivateIPv4, type IpValidationError } from '@/domain/ip-address';
-import type { SavedTv } from '@/domain/tv';
+import { planAddTv } from '@/domain/saved-tvs';
+import type { DeviceIdentity, SavedTv } from '@/domain/tv';
 
 import { loadSavedTvs, writeSavedTvs } from './saved-tv-storage';
 
 export const MAX_TV_NAME_LENGTH = 40;
 
-export type AddTvResult = { ok: true } | { ok: false; error: IpValidationError | 'duplicate' };
+export type AddTvResult =
+  /** `updated` is set when the TV was already saved (same identity) and only its address changed. */
+  | { ok: true; updated?: SavedTv }
+  | { ok: false; error: IpValidationError | 'duplicate' };
+
+export type TvPatch = Partial<Pick<SavedTv, 'ipAddress' | 'deviceId' | 'model'>>;
 
 type SavedTvsState = {
   status: 'loading' | 'ready';
   tvs: readonly SavedTv[];
   /** True if the last read or write to device storage failed. */
   storageError: boolean;
-  addTv: (name: string, ipInput: string) => AddTvResult;
+  addTv: (name: string, ipInput: string, identity?: DeviceIdentity | null) => AddTvResult;
+  /** Updates the address / identity of a saved TV. Returns the updated TV, or null if not found. */
+  updateTv: (id: string, patch: TvPatch) => SavedTv | null;
+  /** Latest list, safe to read from async code (avoids stale closures). */
+  getTvs: () => readonly SavedTv[];
   removeTv: (id: string) => void;
 };
 
@@ -36,12 +47,15 @@ export function SavedTvsProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SavedTvsState['status']>('loading');
   const [tvs, setTvs] = useState<readonly SavedTv[]>([]);
   const [storageError, setStorageError] = useState(false);
+  const tvsRef = useRef<readonly SavedTv[]>([]);
 
   useEffect(() => {
     let active = true;
     loadSavedTvs()
       .then((loaded) => {
-        if (active) setTvs(loaded);
+        if (!active) return;
+        tvsRef.current = loaded;
+        setTvs(loaded);
       })
       .catch(() => {
         if (active) setStorageError(true);
@@ -55,36 +69,71 @@ export function SavedTvsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const persist = useCallback((next: readonly SavedTv[]) => {
+    tvsRef.current = next;
     setTvs(next);
     writeSavedTvs(next)
       .then(() => setStorageError(false))
       .catch(() => setStorageError(true));
   }, []);
 
+  const updateTv = useCallback(
+    (id: string, patch: TvPatch): SavedTv | null => {
+      if (patch.ipAddress !== undefined) {
+        const ip = parsePrivateIPv4(patch.ipAddress);
+        if (!ip.ok) return null;
+        patch = { ...patch, ipAddress: ip.value };
+      }
+      const current = tvsRef.current;
+      const existing = current.find((tv) => tv.id === id);
+      if (!existing) return null;
+      const updated: SavedTv = { ...existing, ...patch };
+      persist(current.map((tv) => (tv.id === id ? updated : tv)));
+      return updated;
+    },
+    [persist],
+  );
+
   const addTv = useCallback(
-    (name: string, ipInput: string): AddTvResult => {
+    (name: string, ipInput: string, identity?: DeviceIdentity | null): AddTvResult => {
       const ip = parsePrivateIPv4(ipInput);
       if (!ip.ok) return { ok: false, error: ip.error };
-      if (tvs.some((tv) => tv.ipAddress === ip.value)) return { ok: false, error: 'duplicate' };
 
-      const trimmed = name.trim().slice(0, MAX_TV_NAME_LENGTH);
-      persist([
-        ...tvs,
-        { id: createId(), name: trimmed || `TV ${ip.value}`, ipAddress: ip.value, addedAt: Date.now() },
-      ]);
-      return { ok: true };
+      const plan = planAddTv({
+        current: tvsRef.current,
+        name,
+        ipAddress: ip.value,
+        identity,
+        maxNameLength: MAX_TV_NAME_LENGTH,
+        newId: createId(),
+        now: Date.now(),
+      });
+
+      switch (plan.kind) {
+        case 'update': {
+          // Same physical TV already saved (identity match): only its address changed.
+          const updated = updateTv(plan.id, plan.patch);
+          return updated ? { ok: true, updated } : { ok: false, error: 'invalidFormat' };
+        }
+        case 'duplicate':
+          return { ok: false, error: 'duplicate' };
+        case 'add':
+          persist([...tvsRef.current, plan.tv]);
+          return { ok: true };
+      }
     },
-    [tvs, persist],
+    [persist, updateTv],
   );
 
   const removeTv = useCallback(
-    (id: string) => persist(tvs.filter((tv) => tv.id !== id)),
-    [tvs, persist],
+    (id: string) => persist(tvsRef.current.filter((tv) => tv.id !== id)),
+    [persist],
   );
 
+  const getTvs = useCallback(() => tvsRef.current, []);
+
   const value = useMemo(
-    () => ({ status, tvs, storageError, addTv, removeTv }),
-    [status, tvs, storageError, addTv, removeTv],
+    () => ({ status, tvs, storageError, addTv, updateTv, getTvs, removeTv }),
+    [status, tvs, storageError, addTv, updateTv, getTvs, removeTv],
   );
 
   return <SavedTvsContext.Provider value={value}>{children}</SavedTvsContext.Provider>;

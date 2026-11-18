@@ -13,6 +13,7 @@ const errorKeys: Partial<Record<TvErrorCode, StringKey>> = {
   timeout: 'check.error.timeout',
   unreachable: 'check.error.unreachable',
   unsupported: 'check.error.unsupported',
+  networkUnavailable: 'discover.error.noWifi',
 };
 
 /** Saved TV on Home: connect / disconnect. Only one TV is connected at a time. */
@@ -26,7 +27,7 @@ export function TvCard({ tv }: { tv: SavedTv }) {
       <View accessible>
         <ThemedText type="smallBold">{tv.name}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          {tv.ipAddress}
+          {tv.model ? `${tv.model} · ${tv.ipAddress}` : tv.ipAddress}
         </ThemedText>
       </View>
 
@@ -38,7 +39,7 @@ export function TvCard({ tv }: { tv: SavedTv }) {
         ) : null}
         {mine?.status === 'connecting' ? (
           <ThemedText type="small" themeColor="textSecondary">
-            {t('connection.connecting')}
+            {mine.searching ? t('connection.searching') : t('connection.connecting')}
           </ThemedText>
         ) : null}
         {mine?.status === 'connected' ? (

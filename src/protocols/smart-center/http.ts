@@ -10,11 +10,23 @@ import { TvError } from '@/domain/tv';
 export const SMART_CENTER_PORT = 56789;
 export const SMART_CENTER_PATH = '/apps/SmartCenter';
 
+/** DIAL application resource: `/apps/<name>`. Names are restricted so no arbitrary path can be requested. */
+const DIAL_APP_PATH = /^\/apps\/[A-Za-z0-9._-]{1,64}$/;
+
+/** Fixed UPnP/DIAL device-description paths that may be read (identity lookup). */
+export const DEVICE_DESCRIPTION_PATHS = ['/dd.xml', '/description.xml', '/'] as const;
+
+function isAllowedPath(path: string): boolean {
+  return DIAL_APP_PATH.test(path) || (DEVICE_DESCRIPTION_PATHS as readonly string[]).includes(path);
+}
+
 export type SmartCenterRequest = {
   ipAddress: string;
   method: 'GET' | 'POST';
   body?: string;
   contentType?: string;
+  /** DIAL app path, default `/apps/SmartCenter`. */
+  path?: string;
   port?: number;
   timeoutMs: number;
   /** Caller cancellation, e.g. when the screen unmounts. */
@@ -35,6 +47,7 @@ export async function smartCenterRequest({
   method,
   body,
   contentType,
+  path = SMART_CENTER_PATH,
   port = SMART_CENTER_PORT,
   timeoutMs,
   signal,
@@ -43,7 +56,9 @@ export async function smartCenterRequest({
   const ip = parsePrivateIPv4(ipAddress);
   if (!ip.ok) throw new TvError('invalidAddress');
 
-  const url = `http://${ip.value}:${port}${SMART_CENTER_PATH}`;
+  if (!isAllowedPath(path)) throw new TvError('invalidAddress');
+
+  const url = `http://${ip.value}:${port}${path}`;
   if (signal?.aborted) throw new TvError('cancelled');
 
   const controller = new AbortController();

@@ -14,7 +14,9 @@ function isSavedTv(value: unknown): value is SavedTv {
     typeof v.name === 'string' &&
     typeof v.ipAddress === 'string' &&
     parsePrivateIPv4(v.ipAddress).ok &&
-    typeof v.addedAt === 'number'
+    typeof v.addedAt === 'number' &&
+    (v.deviceId === undefined || typeof v.deviceId === 'string') &&
+    (v.model === undefined || typeof v.model === 'string')
   );
 }
 

@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { TvError, type RemoteKey, type SavedTv, type TvErrorCode } from '@/domain/tv';
+import { fetchDeviceIdentity } from '@/protocols/smart-center/device-info';
 import {
   DIAL_APPS,
   getDialAppStatus,
@@ -18,6 +19,7 @@ import {
   type DialAppId,
   type DialAppStatus,
 } from '@/protocols/smart-center/dial-apps';
+import { discoverSmartCenterTvs } from '@/protocols/smart-center/discover';
 import {
   isSmartCenterRunning,
   probeSmartCenter,
@@ -34,7 +36,8 @@ import { useSavedTvs } from './saved-tvs-context';
  */
 export type ConnectionState =
   | { status: 'disconnected' }
-  | { status: 'connecting'; tv: SavedTv }
+  /** `searching`: the TV did not answer at its saved address; looking for it on the network by identity. */
+  | { status: 'connecting'; tv: SavedTv; searching?: boolean }
   | { status: 'connected'; tv: SavedTv; probe: SmartCenterProbeResult }
   | { status: 'error'; tv: SavedTv; code: TvErrorCode };
 
@@ -75,7 +78,7 @@ const ConnectionContext = createContext<ConnectionContextValue | null>(null);
 const toCode = (error: unknown): TvErrorCode => (error instanceof TvError ? error.code : 'unknown');
 
 export function ConnectionProvider({ children }: { children: ReactNode }) {
-  const { tvs } = useSavedTvs();
+  const { tvs, updateTv } = useSavedTvs();
   const [state, setState] = useState<ConnectionState>({ status: 'disconnected' });
   const [lastCommand, setLastCommand] = useState<LastCommand | null>(null);
   const [bodyFormat, setBodyFormat] = useState<KeyBodyFormat>('unquoted');
@@ -108,19 +111,51 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     setLastCommand(null);
     setApps({ status: 'idle' });
 
+    const { signal } = controller;
+    const markConnected = async (target: SavedTv, probe: SmartCenterProbeResult) => {
+      setState({ status: 'connected', tv: target, probe });
+      // Older saved TVs have no identity yet: read it once so future IP changes are handled.
+      if (!target.deviceId) {
+        const identity = await fetchDeviceIdentity({ ipAddress: target.ipAddress, signal });
+        if (identity && !signal.aborted) {
+          const updated = updateTv(target.id, { deviceId: identity.deviceId, model: identity.model });
+          if (updated) setState({ status: 'connected', tv: updated, probe });
+        }
+      }
+    };
+
     try {
-      const probe = await probeSmartCenter({ ipAddress: tv.ipAddress, signal: controller.signal });
-      if (controller.signal.aborted) return;
-      setState(
-        isSmartCenterRunning(probe)
-          ? { status: 'connected', tv, probe }
-          : { status: 'error', tv, code: 'unsupported' },
-      );
+      const probe = await probeSmartCenter({ ipAddress: tv.ipAddress, signal });
+      if (signal.aborted) return;
+      if (isSmartCenterRunning(probe)) await markConnected(tv, probe);
+      else setState({ status: 'error', tv, code: 'unsupported' });
+      return;
     } catch (error) {
       const code = toCode(error);
-      if (code !== 'cancelled') setState({ status: 'error', tv, code });
+      if (code === 'cancelled') return;
+      // Wrong / changed address and the TV has a known identity: look for it on the network.
+      if (!tv.deviceId || (code !== 'unreachable' && code !== 'timeout')) {
+        setState({ status: 'error', tv, code });
+        return;
+      }
     }
-  }, []);
+
+    setState({ status: 'connecting', tv, searching: true });
+    try {
+      const found = await discoverSmartCenterTvs({ signal });
+      if (signal.aborted) return;
+      const match = found.find((f) => f.identity?.deviceId === tv.deviceId);
+      if (!match) {
+        setState({ status: 'error', tv, code: 'unreachable' });
+        return;
+      }
+      const moved = updateTv(tv.id, { ipAddress: match.ipAddress }) ?? { ...tv, ipAddress: match.ipAddress };
+      await markConnected(moved, match.probe);
+    } catch (error) {
+      const code = toCode(error);
+      if (code !== 'cancelled') setState({ status: 'error', tv, code: code === 'unknown' ? 'unreachable' : code });
+    }
+  }, [updateTv]);
 
   const sendKey = useCallback(
     (key: RemoteKey) => {

@@ -29,6 +29,7 @@ export type RemoteKey =
   | 'home'
   | 'menu'
   | 'info'
+  | 'exit'
   | 'volumeUp'
   | 'volumeDown'
   | 'mute'
@@ -69,10 +70,26 @@ export interface DiscoveredTv {
 export interface SavedTv {
   id: string;
   name: string;
-  /** Private IPv4, validated by `parsePrivateIPv4`. */
+  /**
+   * Last known private IPv4, validated by `parsePrivateIPv4`. NOT an identity: DHCP can give the TV
+   * a new address after a restart. Use `deviceId` to recognise the same TV.
+   */
   ipAddress: string;
   /** Epoch milliseconds. */
   addedAt: number;
+  /** Stable device identity (UPnP/DIAL UDN, e.g. "uuid:…") when the TV exposes one. */
+  deviceId?: string;
+  /** Model name reported by the TV, for display only. */
+  model?: string;
+}
+
+/** Identity read from the TV's UPnP/DIAL device description. */
+export interface DeviceIdentity {
+  /** UDN, e.g. "uuid:1a2b…". Stable across IP changes. */
+  deviceId: string;
+  friendlyName?: string;
+  model?: string;
+  manufacturer?: string;
 }
 
 export interface TvConnection {

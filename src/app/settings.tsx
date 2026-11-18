@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { AddTvForm } from '@/components/add-tv-form';
 import { Button } from '@/components/button';
+import { DiagnosticsPanel } from '@/components/diagnostics-panel';
 import { DiscoverTvPanel } from '@/components/discover-tv-panel';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -20,6 +21,11 @@ export default function SettingsScreen() {
     <Screen title={t('settings.title')}>
       <Section title={t('settings.section.tv')}>
         <SavedTvsSection />
+      </Section>
+
+      {/* TEMPORARY: remove together with components/diagnostics-panel.tsx */}
+      <Section title={t('diag.title')}>
+        <DiagnosticsPanel />
       </Section>
 
       <Section title={t('settings.section.language')}>

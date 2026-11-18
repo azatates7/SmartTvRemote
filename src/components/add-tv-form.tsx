@@ -4,6 +4,7 @@ import { Platform, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, MinTouchTarget, Radius, Spacing } from '@/constants/theme';
+import type { DeviceIdentity } from '@/domain/tv';
 import { useTranslation, type StringKey } from '@/i18n';
 import { MAX_TV_NAME_LENGTH, useSavedTvs } from '@/services/saved-tvs-context';
 
@@ -18,18 +19,20 @@ type AddTvFormProps = {
   onDone: () => void;
   /** IP found by discovery: shown read-only, only the name is asked. */
   fixedIp?: string;
+  /** Identity read during discovery; saved with the TV so IP changes are recognised. */
+  identity?: DeviceIdentity | null;
 };
 
 /** Saves a TV by name + private IP. Saving makes no network request. */
-export function AddTvForm({ onDone, fixedIp }: AddTvFormProps) {
+export function AddTvForm({ onDone, fixedIp, identity }: AddTvFormProps) {
   const { t } = useTranslation();
   const { addTv } = useSavedTvs();
-  const [name, setName] = useState('');
+  const [name, setName] = useState(identity?.friendlyName ?? '');
   const [ip, setIp] = useState(fixedIp ?? '');
   const [error, setError] = useState<keyof typeof errorKeys | null>(null);
 
   const submit = () => {
-    const result = addTv(name, ip);
+    const result = addTv(name, ip, identity);
     if (result.ok) {
       onDone();
     } else {

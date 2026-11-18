@@ -23,11 +23,13 @@ type ScanState =
 /** Finds TVs on the phone's Wi-Fi (same /24 network) and lets the user save them with one tap. */
 export function DiscoverTvPanel() {
   const { t } = useTranslation();
-  const { tvs } = useSavedTvs();
+  const { tvs, getTvs, updateTv } = useSavedTvs();
   const [state, setState] = useState<ScanState>({ kind: 'idle' });
   const [found, setFound] = useState<DiscoveredSmartCenter[]>([]);
   /** IP of the found TV the user is currently naming. */
   const [namingIp, setNamingIp] = useState<string | null>(null);
+  /** Found IP → name of the saved TV whose address was updated to it. */
+  const [relocated, setRelocated] = useState<Record<string, string>>({});
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -37,13 +39,23 @@ export function DiscoverTvPanel() {
     const controller = new AbortController();
     abortRef.current = controller;
     setFound([]);
+    setRelocated({});
     setState({ kind: 'scanning', progress: { scanned: 0, total: 0 } });
 
     try {
       await discoverSmartCenterTvs({
         signal: controller.signal,
         onProgress: (progress) => setState({ kind: 'scanning', progress }),
-        onFound: (tv) => setFound((prev) => [...prev, tv]),
+        onFound: (tv) => {
+          setFound((prev) => [...prev, tv]);
+          // Same TV (identity match) at a new address: update the saved TV instead of adding a new one.
+          const deviceId = tv.identity?.deviceId;
+          const saved = deviceId ? getTvs().find((s) => s.deviceId === deviceId) : undefined;
+          if (saved && saved.ipAddress !== tv.ipAddress) {
+            updateTv(saved.id, { ipAddress: tv.ipAddress, model: tv.identity?.model ?? saved.model });
+            setRelocated((prev) => ({ ...prev, [tv.ipAddress]: saved.name }));
+          }
+        },
       });
       setState({ kind: 'done' });
     } catch (error) {
@@ -54,7 +66,12 @@ export function DiscoverTvPanel() {
 
   const stop = () => abortRef.current?.abort();
 
-  const savedIps = new Set(tvs.map((tv) => tv.ipAddress));
+  const scanDone = state.kind === 'done';
+  // Saved TVs without identity that did not answer at their saved address in this scan:
+  // a newly found TV may be one of them with a new IP (the user decides).
+  const missingSaved = scanDone
+    ? tvs.filter((s) => !s.deviceId && !found.some((f) => f.ipAddress === s.ipAddress))
+    : [];
 
   return (
     <View style={styles.container}>
@@ -84,30 +101,70 @@ export function DiscoverTvPanel() {
       </View>
 
       {found.map((tv) => {
-        const saved = savedIps.has(tv.ipAddress);
+        const deviceId = tv.identity?.deviceId;
+        // Saved = same identity, or same IP when identity cannot tell them apart
+        // (a saved TV with a different identity at this IP has a stale address: not this TV).
+        const saved = tvs.find(
+          (s) =>
+            (deviceId && s.deviceId === deviceId) ||
+            (s.ipAddress === tv.ipAddress && (!deviceId || !s.deviceId)),
+        );
         if (namingIp === tv.ipAddress && !saved) {
-          return <AddTvForm key={tv.ipAddress} fixedIp={tv.ipAddress} onDone={() => setNamingIp(null)} />;
+          return (
+            <AddTvForm
+              key={tv.ipAddress}
+              fixedIp={tv.ipAddress}
+              identity={tv.identity}
+              onDone={() => setNamingIp(null)}
+            />
+          );
         }
+        const title = tv.identity?.friendlyName ?? tv.ipAddress;
+        const subtitle = [tv.identity?.model, tv.identity?.friendlyName ? tv.ipAddress : undefined]
+          .filter(Boolean)
+          .join(' · ');
         return (
-          <View key={tv.ipAddress} style={styles.foundRow}>
-            <View style={styles.foundInfo} accessible>
-              <ThemedText type="small">{tv.ipAddress}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {[tv.probe.appName, tv.probe.appState].filter(Boolean).join(' · ') ||
-                  t('discover.respondedOnPort')}
-              </ThemedText>
+          <View key={tv.ipAddress} style={styles.foundItem}>
+            <View style={styles.foundRow}>
+              <View style={styles.foundInfo} accessible>
+                <ThemedText type="small">{title}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {subtitle || t('discover.respondedOnPort')}
+                </ThemedText>
+              </View>
+              {relocated[tv.ipAddress] ? (
+                <ThemedText type="small" style={styles.ok}>
+                  {`${t('discover.addressUpdated')} ${relocated[tv.ipAddress]}`}
+                </ThemedText>
+              ) : saved ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {t('discover.alreadySaved')}
+                </ThemedText>
+              ) : (
+                <Button
+                  label={t('discover.add')}
+                  accessibilityLabel={`${t('discover.add')}: ${title}`}
+                  onPress={() => setNamingIp(tv.ipAddress)}
+                />
+              )}
             </View>
-            {saved ? (
-              <ThemedText type="small" themeColor="textSecondary">
-                {t('discover.alreadySaved')}
-              </ThemedText>
-            ) : (
-              <Button
-                label={t('discover.add')}
-                accessibilityLabel={`${t('discover.add')}: ${tv.ipAddress}`}
-                onPress={() => setNamingIp(tv.ipAddress)}
-              />
-            )}
+            {!saved && !relocated[tv.ipAddress]
+              ? missingSaved.map((s) => (
+                  <Button
+                    key={s.id}
+                    variant="secondary"
+                    label={`${t('discover.isNewAddressOf')} ${s.name}`}
+                    onPress={() => {
+                      updateTv(s.id, {
+                        ipAddress: tv.ipAddress,
+                        deviceId: tv.identity?.deviceId,
+                        model: tv.identity?.model ?? s.model,
+                      });
+                      setRelocated((prev) => ({ ...prev, [tv.ipAddress]: s.name }));
+                    }}
+                  />
+                ))
+              : null}
           </View>
         );
       })}
@@ -131,7 +188,12 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingVertical: Spacing.three,
   },
+  foundItem: {
+    gap: Spacing.two,
+    alignItems: 'flex-start',
+  },
   foundRow: {
+    alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -146,5 +208,10 @@ const styles = StyleSheet.create({
   },
   error: {
     color: Colors.danger,
+  },
+  ok: {
+    color: Colors.accent,
+    flexShrink: 1,
+    textAlign: 'right',
   },
 });
