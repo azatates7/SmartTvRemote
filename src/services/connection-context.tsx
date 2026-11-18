@@ -14,6 +14,7 @@ import { fetchDeviceIdentity } from '@/protocols/smart-center/device-info';
 import {
   DIAL_APPS,
   getDialAppStatus,
+  isLaunchAccepted,
   launchDialApp,
   type DialAppDefinition,
   type DialAppId,
@@ -25,7 +26,7 @@ import {
   probeSmartCenter,
   type SmartCenterProbeResult,
 } from '@/protocols/smart-center/probe';
-import { sendSmartCenterKey, type KeyBodyFormat } from '@/protocols/smart-center/send-key';
+import { sendSmartCenterKey } from '@/protocols/smart-center/send-key';
 
 import { loadCustomApps, writeCustomApps } from './custom-apps-storage';
 import { useSavedTvs } from './saved-tvs-context';
@@ -45,7 +46,8 @@ export type CommandTarget = { type: 'key'; key: RemoteKey } | { type: 'app'; app
 
 export type LastCommand =
   | { target: CommandTarget; ok: true; httpStatus: number; elapsedMs: number }
-  | { target: CommandTarget; ok: false; code: TvErrorCode };
+  /** `httpStatus` is set when the TV answered but refused (e.g. 403 for an app it does not allow). */
+  | { target: CommandTarget; ok: false; code: TvErrorCode; httpStatus?: number };
 
 export type AppsState =
   | { status: 'idle' }
@@ -60,9 +62,6 @@ type ConnectionContextValue = {
   disconnect: () => void;
   sendKey: (key: RemoteKey) => void;
   lastCommand: LastCommand | null;
-  /** Experimental until the TV test settles which body format works. Not persisted. */
-  bodyFormat: KeyBodyFormat;
-  setBodyFormat: (format: KeyBodyFormat) => void;
   apps: AppsState;
   refreshApps: () => void;
   launchApp: (appId: DialAppId) => void;
@@ -81,7 +80,6 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   const { tvs, updateTv } = useSavedTvs();
   const [state, setState] = useState<ConnectionState>({ status: 'disconnected' });
   const [lastCommand, setLastCommand] = useState<LastCommand | null>(null);
-  const [bodyFormat, setBodyFormat] = useState<KeyBodyFormat>('unquoted');
   const [apps, setApps] = useState<AppsState>({ status: 'idle' });
   const [customApps, setCustomApps] = useState<DialAppDefinition[]>([]);
   const customAppsRef = useRef<DialAppDefinition[]>([]);
@@ -160,18 +158,21 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   const sendKey = useCallback(
     (key: RemoteKey) => {
       if (!connectedIp) return;
-      const format = bodyFormat;
       enqueue(async () => {
         try {
-          const result = await sendSmartCenterKey({ ipAddress: connectedIp, key, format });
-          setLastCommand({ target: { type: 'key', key }, ok: true, ...result });
+          const result = await sendSmartCenterKey({ ipAddress: connectedIp, key });
+          setLastCommand(
+            result.httpStatus >= 200 && result.httpStatus < 300
+              ? { target: { type: 'key', key }, ok: true, ...result }
+              : { target: { type: 'key', key }, ok: false, code: 'unsupported', httpStatus: result.httpStatus },
+          );
         } catch (error) {
           // Never retried automatically (AGENTS.md): the user can press again.
           setLastCommand({ target: { type: 'key', key }, ok: false, code: toCode(error) });
         }
       });
     },
-    [connectedIp, bodyFormat, enqueue],
+    [connectedIp, enqueue],
   );
 
   const refreshApps = useCallback(() => {
@@ -200,7 +201,11 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       enqueue(async () => {
         try {
           const result = await launchDialApp({ ipAddress: connectedIp, dialName });
-          setLastCommand({ target: { type: 'app', appId }, ok: true, ...result });
+          setLastCommand(
+            isLaunchAccepted(result.httpStatus)
+              ? { target: { type: 'app', appId }, ok: true, ...result }
+              : { target: { type: 'app', appId }, ok: false, code: 'unsupported', httpStatus: result.httpStatus },
+          );
         } catch (error) {
           setLastCommand({ target: { type: 'app', appId }, ok: false, code: toCode(error) });
         }
@@ -298,8 +303,6 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       disconnect,
       sendKey,
       lastCommand,
-      bodyFormat,
-      setBodyFormat,
       apps,
       refreshApps,
       launchApp,
@@ -313,7 +316,6 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       disconnect,
       sendKey,
       lastCommand,
-      bodyFormat,
       apps,
       refreshApps,
       launchApp,

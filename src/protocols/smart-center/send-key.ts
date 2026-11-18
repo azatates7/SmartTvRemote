@@ -1,16 +1,14 @@
 /**
- * EXPERIMENTAL key sending for Smart Center TVs: `POST /apps/SmartCenter` with an XML key body.
+ * Key sending for Smart Center TVs: `POST /apps/SmartCenter` with an XML key body.
  *
- * Key codes and body format come from community sources and are NOT yet verified on a real TV
- * (docs/protocol-notes.md §3–4). Sources disagree on quoting, so the format is selectable until
- * testing settles it. Power (1012) is intentionally absent: it needs a confirmation flow first.
+ * Body format verified on TV-001 (2026-11-18): unquoted code, `<remote><key code=1016 /></remote>`.
+ * Key codes come from community sources; see docs/compatibility.md for which are verified.
+ * Power is mapped, but the UI must confirm before sending it.
  */
 
 import type { RemoteKey } from '@/domain/tv';
 
 import { smartCenterRequest } from './http';
-
-export type KeyBodyFormat = 'unquoted' | 'quoted';
 
 /**
  * Logical key → vendor code. Only keys listed here are offered by the UI.
@@ -29,14 +27,26 @@ export const SMART_CENTER_KEY_CODES: Partial<Record<RemoteKey, number>> = {
   ok: 1053,
   back: 1010,
   home: 1048, // conflict: another source says 1046
+  exit: 1037,
+  play: 1025,
+  stop: 1049,
+  power: 1012, // 3 sources; disruptive — UI asks for confirmation, never retried
+  digit0: 1000,
+  digit1: 1001,
+  digit2: 1002,
+  digit3: 1003,
+  digit4: 1004,
+  digit5: 1005,
+  digit6: 1006,
+  digit7: 1007,
+  digit8: 1008,
+  digit9: 1009,
 };
 
 const KEY_TIMEOUT_MS = 3000;
 
-export function buildKeyBody(code: number, format: KeyBodyFormat): string {
-  return format === 'unquoted'
-    ? `<remote><key code=${code} /></remote>`
-    : `<?xml version="1.0" ?><remote><key code="${code}"/></remote>`;
+export function buildKeyBody(code: number): string {
+  return `<remote><key code=${code} /></remote>`;
 }
 
 export type SendKeyResult = { httpStatus: number; elapsedMs: number };
@@ -44,13 +54,11 @@ export type SendKeyResult = { httpStatus: number; elapsedMs: number };
 export async function sendSmartCenterKey({
   ipAddress,
   key,
-  format,
   signal,
   fetchImpl,
 }: {
   ipAddress: string;
   key: RemoteKey;
-  format: KeyBodyFormat;
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
 }): Promise<SendKeyResult> {
@@ -63,7 +71,7 @@ export async function sendSmartCenterKey({
   const response = await smartCenterRequest({
     ipAddress,
     method: 'POST',
-    body: buildKeyBody(code, format),
+    body: buildKeyBody(code),
     contentType: 'application/xml',
     timeoutMs: KEY_TIMEOUT_MS,
     signal,

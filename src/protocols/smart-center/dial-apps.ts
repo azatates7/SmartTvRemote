@@ -1,5 +1,7 @@
 /**
- * EXPERIMENTAL app launching via DIAL (the TV runs a DIAL 2.2 server, see docs/compatibility.md TV-001).
+ * App launching via DIAL (the TV runs a DIAL 2.2 server, see docs/compatibility.md TV-001).
+ * Verified on TV-001 (2026-11-18): Netflix and Prime Video (`AmazonInstantVideo`) launch with 201;
+ * YouTube answers 403 (the TV does not allow launching it over DIAL); unknown names answer 404.
  *
  * DIAL REST: `GET /apps/<name>` returns the app's status XML (404 = not installed, no side effects);
  * `POST /apps/<name>` launches it (201 Created when started). YouTube / Netflix / Prime Video use public
@@ -40,6 +42,8 @@ export type DialAppStatus = {
   id: DialAppId;
   label: string;
   installed: boolean;
+  /** The TV knows the app but refuses DIAL access to it (HTTP 403). */
+  restricted?: boolean;
   /** The DIAL name that answered 200; used to launch. */
   dialName?: string;
   /** `<state>` from DIAL XML, e.g. "running", "stopped". */
@@ -67,6 +71,7 @@ export async function getDialAppStatus({
   fetchImpl?: typeof fetch;
 }): Promise<DialAppStatus> {
   let lastStatus = 0;
+  let restricted = false;
   for (const dialName of app.dialNames) {
     const response = await smartCenterRequest({
       ipAddress,
@@ -77,6 +82,7 @@ export async function getDialAppStatus({
       fetchImpl,
     });
     lastStatus = response.httpStatus;
+    if (response.httpStatus === 403) restricted = true;
     if (response.httpStatus >= 200 && response.httpStatus < 300) {
       return {
         id: app.id,
@@ -88,7 +94,18 @@ export async function getDialAppStatus({
       };
     }
   }
-  return { id: app.id, label: app.label, installed: false, httpStatus: lastStatus };
+  return {
+    id: app.id,
+    label: app.label,
+    installed: false,
+    restricted: restricted || undefined,
+    httpStatus: restricted ? 403 : lastStatus,
+  };
+}
+
+/** DIAL: 201 = started, 200 = already running. Anything else means the TV did not open the app. */
+export function isLaunchAccepted(httpStatus: number): boolean {
+  return httpStatus === 200 || httpStatus === 201;
 }
 
 /** Starts the app on the TV. User-initiated only; never retried. */

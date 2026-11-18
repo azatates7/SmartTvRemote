@@ -84,7 +84,13 @@ Codes confirmed by **three or more independent sources**: 1012, 1013, 1016, 1017
 
 **Original proposal:** A first, then B. Defer C unless A and B prove insufficient. This matches the AGENTS.md guidance to prefer discovery that avoids restricted multicast.
 
-## 5b. App launching via DIAL (2026-11-16, not yet verified on the TV)
+## 5b. App launching via DIAL (verified on TV-001, 2026-11-18)
+
+Results: Netflix and `AmazonInstantVideo` launch (POST → 201). YouTube answers **403** (the TV refuses
+DIAL access; the app does not try to bypass this). Unknown names answer 404, so there is no catch-all.
+The device description's `Application-URL` is `http://<TV_IP>:56789/apps/`, the base already used.
+
+Original notes:
 
 TV-001 answers as a **DIAL 2.2** server (`/apps/SmartCenter`), so standard DIAL REST should apply to other apps:
 
@@ -94,7 +100,7 @@ TV-001 answers as a **DIAL 2.2** server (`/apps/SmartCenter`), so standard DIAL 
 - TOD: no public DIAL name found; the app tries `TOD`, `TODTV`, `TOD_TV`, `tod` in order (GET only) and launches with the first that answers 200. TV+ and other local apps: names must be found on the TV before adding them.
 - Implementation: `src/protocols/smart-center/dial-apps.ts`. Paths are restricted to `/apps/[A-Za-z0-9._-]{1,64}`.
 
-## 5c. Device identity (2026-11-17, location not yet verified on the TV)
+## 5c. Device identity (location verified on TV-001, 2026-11-18: `:56790/dd.xml`)
 
 DHCP can give the TV a new IP after a restart, so the IP is not an identity.
 UPnP/DIAL device descriptions carry a stable `<UDN>` (`uuid:…`) plus `friendlyName` / `modelName`.

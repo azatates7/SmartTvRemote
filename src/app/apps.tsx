@@ -14,14 +14,21 @@ import { useTranslation, type StringKey } from '@/i18n';
 import {
   customAppFromQuery,
   MIN_SEARCH_LENGTH,
+  normalizeSearch,
   searchCatalog,
 } from '@/protocols/smart-center/app-catalog';
-import type { DialAppDefinition, DialAppId } from '@/protocols/smart-center/dial-apps';
+import {
+  DIAL_APPS,
+  type DialAppDefinition,
+  type DialAppId,
+  type DialAppStatus,
+} from '@/protocols/smart-center/dial-apps';
 import { useConnection, type AddAppResult } from '@/services/connection-context';
 
 const errorKeys: Partial<Record<TvErrorCode, StringKey>> = {
   timeout: 'remote.error.timeout',
   unreachable: 'remote.error.unreachable',
+  unsupported: 'apps.launchRefused',
 };
 
 const addResultKeys: Record<AddAppResult, StringKey> = {
@@ -55,7 +62,8 @@ export default function AppsScreen() {
   }
 
   const installed = apps.apps.filter((app) => app.installed);
-  const missing = apps.apps.filter((app) => !app.installed);
+  const restricted = apps.apps.filter((app) => !app.installed && app.restricted);
+  const missing = apps.apps.filter((app) => !app.installed && !app.restricted);
   const lastApp = lastCommand?.target.type === 'app' ? lastCommand : null;
 
   return (
@@ -105,12 +113,20 @@ export default function AppsScreen() {
             themeColor={lastApp.ok ? 'textSecondary' : undefined}>
             {lastApp.ok
               ? `${t('apps.launched')} · HTTP ${lastApp.httpStatus} · ${lastApp.elapsedMs} ms`
-              : t(errorKeys[lastApp.code] ?? 'check.error.unknown')}
+              : `${t(errorKeys[lastApp.code] ?? 'check.error.unknown')}${
+                  lastApp.httpStatus ? ` (HTTP ${lastApp.httpStatus})` : ''
+                }`}
           </ThemedText>
         ) : null}
       </View>
 
-      <AppSearch knownIds={new Set(apps.apps.filter((a) => a.installed).map((a) => a.id))} />
+      <AppSearch statuses={apps.apps} />
+
+      {restricted.length > 0 ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {`${t('apps.restricted')} ${restricted.map((app) => app.label).join(', ')}`}
+        </ThemedText>
+      ) : null}
 
       {missing.length > 0 ? (
         <ThemedText type="small" themeColor="textSecondary">
@@ -130,7 +146,7 @@ export default function AppsScreen() {
 }
 
 /** Search the catalog (min. 3 characters) or try a raw DIAL name; adding checks the TV first. */
-function AppSearch({ knownIds }: { knownIds: ReadonlySet<DialAppId> }) {
+function AppSearch({ statuses }: { statuses: readonly DialAppStatus[] }) {
   const { t } = useTranslation();
   const { addApp } = useConnection();
   const [query, setQuery] = useState('');
@@ -139,12 +155,25 @@ function AppSearch({ knownIds }: { knownIds: ReadonlySet<DialAppId> }) {
   const trimmed = query.trim();
   const tooShort = trimmed.length > 0 && trimmed.length < MIN_SEARCH_LENGTH;
 
+  const knownIds = new Set(statuses.filter((a) => a.installed).map((a) => a.id));
   const matches = useMemo(() => searchCatalog(query), [query]);
-  // Offer "try this exact name on the TV" only when the catalog has nothing for the query.
+  // Built-in apps (YouTube, Netflix, …) are always checked; show their real status instead of "Add".
+  const builtinMatches = useMemo(() => {
+    const q = normalizeSearch(query);
+    if (trimmed.length < MIN_SEARCH_LENGTH || !q) return [];
+    return DIAL_APPS.filter((app) => normalizeSearch(app.label).includes(q));
+  }, [query, trimmed.length]);
+  // Offer "try this exact name on the TV" only when nothing else matches.
   const custom = useMemo(
-    () => (matches.length === 0 ? customAppFromQuery(query) : null),
-    [query, matches],
+    () => (matches.length === 0 && builtinMatches.length === 0 ? customAppFromQuery(query) : null),
+    [query, matches, builtinMatches],
   );
+  const builtinStatusKey = (id: DialAppId): StringKey => {
+    const status = statuses.find((s) => s.id === id);
+    if (status?.installed) return 'apps.add.alreadyAdded';
+    if (status?.restricted) return 'apps.builtin.restricted';
+    return 'apps.builtin.notFound';
+  };
 
   const add = async (app: DialAppDefinition) => {
     setResults((prev) => ({ ...prev, [app.id]: 'checking' }));
@@ -180,7 +209,22 @@ function AppSearch({ knownIds }: { knownIds: ReadonlySet<DialAppId> }) {
         </ThemedText>
       ) : null}
 
-      {!tooShort && trimmed.length >= MIN_SEARCH_LENGTH && rows.length === 0 ? (
+      {builtinMatches.map((app) => (
+        <View key={app.id} style={styles.resultRow}>
+          <AppBadge appId={app.id} label={app.label} size={36} />
+          <View style={styles.info} accessible>
+            <ThemedText type="small">{app.label}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {t(builtinStatusKey(app.id))}
+            </ThemedText>
+          </View>
+        </View>
+      ))}
+
+      {!tooShort &&
+      trimmed.length >= MIN_SEARCH_LENGTH &&
+      rows.length === 0 &&
+      builtinMatches.length === 0 ? (
         <ThemedText type="small" themeColor="textSecondary">
           {t('apps.search.noResults')}
         </ThemedText>

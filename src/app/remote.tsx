@@ -18,7 +18,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors, MaxContentWidth, MinTouchTarget, Radius, Spacing } from '@/constants/theme';
 import type { RemoteKey, TvErrorCode } from '@/domain/tv';
 import { useTranslation, type StringKey } from '@/i18n';
-import { SMART_CENTER_KEY_CODES, type KeyBodyFormat } from '@/protocols/smart-center/send-key';
+import { SMART_CENTER_KEY_CODES } from '@/protocols/smart-center/send-key';
 import { useConnection, type AppsState, type CommandTarget } from '@/services/connection-context';
 
 const keyNames: Partial<Record<RemoteKey, StringKey>> = {
@@ -43,6 +43,7 @@ const keyNames: Partial<Record<RemoteKey, StringKey>> = {
 const errorKeys: Partial<Record<TvErrorCode, StringKey>> = {
   timeout: 'remote.error.timeout',
   unreachable: 'remote.error.unreachable',
+  unsupported: 'remote.error.refused',
 };
 
 const DIGITS: RemoteKey[][] = [
@@ -154,12 +155,13 @@ export default function RemoteScreen() {
             {`${t('remote.lastCommand')} ${targetLabel(lastCommand.target, t, apps)} · `}
             {lastCommand.ok
               ? `HTTP ${lastCommand.httpStatus} · ${lastCommand.elapsedMs} ms`
-              : t(errorKeys[lastCommand.code] ?? 'check.error.unknown')}
+              : `${t(errorKeys[lastCommand.code] ?? 'check.error.unknown')}${
+                  lastCommand.httpStatus ? ` (HTTP ${lastCommand.httpStatus})` : ''
+                }`}
           </ThemedText>
         ) : null}
       </View>
 
-      <ExperimentalPanel />
     </Screen>
   );
 }
@@ -300,35 +302,6 @@ function Key({
   );
 }
 
-function ExperimentalPanel() {
-  const { t } = useTranslation();
-  const { bodyFormat, setBodyFormat } = useConnection();
-
-  const option = (format: KeyBodyFormat, label: string) => (
-    <Pressable
-      onPress={() => setBodyFormat(format)}
-      accessibilityRole="radio"
-      accessibilityState={{ selected: bodyFormat === format }}
-      style={[styles.option, bodyFormat === format && styles.optionSelected]}>
-      <ThemedText type="small" style={bodyFormat === format ? styles.onAccent : undefined}>
-        {label}
-      </ThemedText>
-    </Pressable>
-  );
-
-  return (
-    <ThemedView type="backgroundElement" style={styles.experimental}>
-      <ThemedText type="smallBold">{t('remote.experimental.title')}</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        {t('remote.experimental.message')}
-      </ThemedText>
-      <View style={styles.optionRow} accessibilityRole="radiogroup">
-        {option('unquoted', t('remote.format.unquoted'))}
-        {option('quoted', t('remote.format.quoted'))}
-      </View>
-    </ThemedView>
-  );
-}
 
 const CORNER = 76;
 const ARROW = 60;
@@ -487,28 +460,5 @@ const styles = StyleSheet.create({
   },
   error: {
     color: Colors.danger,
-  },
-  experimental: {
-    borderRadius: Radius.card,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  option: {
-    flex: 1,
-    minHeight: MinTouchTarget,
-    borderRadius: Radius.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.backgroundSelected,
-  },
-  optionSelected: {
-    backgroundColor: Colors.accent,
-  },
-  onAccent: {
-    color: Colors.background,
   },
 });

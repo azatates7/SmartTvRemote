@@ -14,7 +14,10 @@ import { DEVICE_DESCRIPTION_PATHS, SMART_CENTER_PORT, smartCenterRequest } from 
 
 type Candidate = { port: number; path: (typeof DEVICE_DESCRIPTION_PATHS)[number] };
 
-/** Unverified guesses, tried in order. 56790 is the port next to Smart Center seen open on Vestel TVs. */
+/**
+ * Tried in order. `:56790/dd.xml` is verified on TV-001 (Toshiba 50UL2163DT, Vestel MB180, 2026-11-18);
+ * the others are fallbacks for models not tested yet.
+ */
 const CANDIDATES: readonly Candidate[] = [
   { port: 56790, path: '/dd.xml' },
   { port: SMART_CENTER_PORT, path: '/dd.xml' },

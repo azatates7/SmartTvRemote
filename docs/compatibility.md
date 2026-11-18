@@ -7,7 +7,7 @@
 
 | TV model | Product code | Firmware | Region | Discovery | Verified commands | Last tested | Record |
 |----------|--------------|----------|--------|-----------|-------------------|-------------|--------|
-| _TBD_ | _TBD_ | _TBD_ | TR | Wi-Fi /24 scan: found | `GET` status only; no keys yet | 2026-11-16 | TV-001 |
+| Toshiba 50UL2163DT (Vestel MB180) | _TBD_ | _TBD_ | TR | Wi-Fi /24 scan: found; UDN at `:56790/dd.xml` | Keys (Format A); Netflix, Prime Video via DIAL | 2026-11-18 | TV-001 |
 
 ---
 
@@ -102,4 +102,30 @@ POST key tests:   not yet run
 Smart Center DIAL service is present and running on this TV (DIAL 2.2).
 Same-network discovery (/24 scan) found the TV.
 Key body format, headers and key codes: still open (protocol-notes.md §7, questions 2–6).
+```
+
+#### TV-001 — follow-up 2026-11-18 (in-app diagnostics + manual tests)
+
+```text
+TV IP:            192.168.1.108 (DHCP; was .100 / .107 / .112 on earlier days)
+Device description: GET :56790/dd.xml -> 200
+  UDN:            uuid:00000000-0000-0000-0000-909877e434b0
+  friendlyName:   TOSHIBA_50UL2163DT_2
+  manufacturer:   VESTEL
+  modelName:      MB180
+  Application-URL: http://<TV_IP>:56789/apps/   (same base the app already uses)
+
+Keys:             POST /apps/SmartCenter, body format A (unquoted) works:
+                  <remote><key code=1016 /></remote>
+                  Reported working by the tester; per-key list still to confirm
+                  (Home 1046 vs 1048, OK vs channel list on 1053, exit, play, stop, digits).
+
+DIAL apps:        GET /apps/NoSuchApp_9f3k2 -> 404 (no catch-all)
+                  Netflix            GET 200 (stopped)  POST 201 -> app opened
+                  AmazonInstantVideo GET 200            POST 201 -> app opened
+                  YouTube            GET 403 (TV refuses DIAL access)
+                  TOD guesses, TV+ guesses -> 404
+
+Open:             How the official app opens YouTube (likely a remote key code).
+                  Channel list / guide endpoint.
 ```

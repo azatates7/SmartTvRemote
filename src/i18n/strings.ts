@@ -27,11 +27,7 @@ export const en = {
   'remote.lastCommand': 'Last command:',
   'remote.error.timeout': 'No response from the TV.',
   'remote.error.unreachable': 'Could not reach the TV. Check the Wi-Fi connection.',
-  'remote.experimental.title': 'Experimental',
-  'remote.experimental.message':
-    'Key codes are not yet verified on your TV. If the TV does not react to a key, switch the command format and try again.',
-  'remote.format.unquoted': 'Format A',
-  'remote.format.quoted': 'Format B',
+  'remote.error.refused': 'The TV refused the command',
 
   'key.up': 'Up',
   'key.down': 'Down',
@@ -78,6 +74,10 @@ export const en = {
   'apps.state.running': 'Running',
   'apps.state.stopped': 'Not running',
   'apps.remove': 'Remove',
+  'apps.restricted': 'The TV does not allow opening these apps from the phone:',
+  'apps.launchRefused': 'The TV did not open the app',
+  'apps.builtin.restricted': 'The TV does not allow opening this app from the phone',
+  'apps.builtin.notFound': 'Not found on this TV',
   'apps.add.title': 'Add an app',
   'apps.search.placeholder': 'Search apps (at least 3 characters)',
   'apps.search.minChars': 'Type at least 3 characters.',
@@ -90,7 +90,7 @@ export const en = {
   'apps.add.notFound': 'The TV did not recognize this app',
   'apps.add.failed': 'Could not reach the TV',
   'apps.experimentalNote':
-    'Experimental: apps are opened with the DIAL standard. App names on the TV are not confirmed yet, so several likely names are tried. An app is added only if the TV recognizes it.',
+    'Apps are opened with the DIAL standard. An app is added only if the TV recognizes it.',
 
   'settings.title': 'Settings',
   'settings.section.tv': 'TV',
@@ -184,11 +184,7 @@ export const tr: Record<StringKey, string> = {
   'remote.lastCommand': 'Son komut:',
   'remote.error.timeout': 'TV yanıt vermedi.',
   'remote.error.unreachable': 'TV’ye ulaşılamadı. Wi-Fi bağlantısını kontrol edin.',
-  'remote.experimental.title': 'Deneysel',
-  'remote.experimental.message':
-    'Tuş kodları TV’nizde henüz doğrulanmadı. TV bir tuşa tepki vermezse komut formatını değiştirip tekrar deneyin.',
-  'remote.format.unquoted': 'Format A',
-  'remote.format.quoted': 'Format B',
+  'remote.error.refused': 'TV komutu reddetti',
 
   'key.up': 'Yukarı',
   'key.down': 'Aşağı',
@@ -235,6 +231,10 @@ export const tr: Record<StringKey, string> = {
   'apps.state.running': 'Açık',
   'apps.state.stopped': 'Kapalı',
   'apps.remove': 'Kaldır',
+  'apps.restricted': 'TV bu uygulamaların telefondan açılmasına izin vermiyor:',
+  'apps.launchRefused': 'TV uygulamayı açmadı',
+  'apps.builtin.restricted': 'TV bu uygulamanın telefondan açılmasına izin vermiyor',
+  'apps.builtin.notFound': 'Bu TV’de bulunamadı',
   'apps.add.title': 'Uygulama ekle',
   'apps.search.placeholder': 'Uygulama ara (en az 3 karakter)',
   'apps.search.minChars': 'En az 3 karakter girin.',
@@ -247,7 +247,7 @@ export const tr: Record<StringKey, string> = {
   'apps.add.notFound': 'TV bu uygulamayı tanımadı',
   'apps.add.failed': 'TV’ye ulaşılamadı',
   'apps.experimentalNote':
-    'Deneysel: uygulamalar DIAL standardıyla açılır. Uygulamaların TV’deki adları henüz doğrulanmadı, bu yüzden birkaç olası ad deneniyor. Bir uygulama yalnızca TV onu tanırsa eklenir.',
+    'Uygulamalar DIAL standardıyla açılır. Bir uygulama yalnızca TV onu tanırsa eklenir.',
 
   'settings.title': 'Ayarlar',
   'settings.section.tv': 'Televizyon',
