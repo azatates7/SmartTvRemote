@@ -18,6 +18,12 @@ const ICONS = {
   close: { ios: 'xmark', android: 'close' },
   apps: { ios: 'square.grid.2x2', android: 'apps' },
   search: { ios: 'magnifyingglass', android: 'search' },
+  menu: { ios: 'line.3.horizontal', android: 'menu' },
+  source: { ios: 'rectangle.portrait.and.arrow.right', android: 'input' },
+  favorites: { ios: 'star', android: 'star' },
+  portal: { ios: 'globe', android: 'language' },
+  previous: { ios: 'backward.end.fill', android: 'skip_previous' },
+  next: { ios: 'forward.end.fill', android: 'skip_next' },
 } as const;
 
 export type IconName = keyof typeof ICONS;

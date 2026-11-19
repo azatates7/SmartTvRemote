@@ -29,6 +29,7 @@ import {
 import { sendSmartCenterKey } from '@/protocols/smart-center/send-key';
 
 import { loadCustomApps, writeCustomApps } from './custom-apps-storage';
+import { loadLastTvId, saveLastTvId } from './last-tv-storage';
 import { useSavedTvs } from './saved-tvs-context';
 
 /**
@@ -60,7 +61,8 @@ type ConnectionContextValue = {
   state: ConnectionState;
   connect: (tv: SavedTv) => Promise<void>;
   disconnect: () => void;
-  sendKey: (key: RemoteKey) => void;
+  /** `skipIfBusy`: drop the press if the TV still has requests queued (used for held-key repeat). */
+  sendKey: (key: RemoteKey, options?: { skipIfBusy?: boolean }) => void;
   lastCommand: LastCommand | null;
   apps: AppsState;
   refreshApps: () => void;
@@ -77,7 +79,7 @@ const ConnectionContext = createContext<ConnectionContextValue | null>(null);
 const toCode = (error: unknown): TvErrorCode => (error instanceof TvError ? error.code : 'unknown');
 
 export function ConnectionProvider({ children }: { children: ReactNode }) {
-  const { tvs, updateTv } = useSavedTvs();
+  const { tvs, updateTv, status: savedTvsStatus } = useSavedTvs();
   const [state, setState] = useState<ConnectionState>({ status: 'disconnected' });
   const [lastCommand, setLastCommand] = useState<LastCommand | null>(null);
   const [apps, setApps] = useState<AppsState>({ status: 'idle' });
@@ -87,14 +89,19 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   const connectAbortRef = useRef<AbortController | null>(null);
   // Requests to the TV go one at a time: community reports say its server can hang on parallel requests.
   const queueRef = useRef<Promise<void>>(Promise.resolve());
+  const pendingRef = useRef(0);
 
   const enqueue = useCallback((task: () => Promise<void>) => {
-    queueRef.current = queueRef.current.then(task, task);
+    pendingRef.current += 1;
+    const run = () => task().finally(() => (pendingRef.current -= 1));
+    queueRef.current = queueRef.current.then(run, run);
   }, []);
 
   const connectedIp = state.status === 'connected' ? state.tv.ipAddress : null;
 
+  /** User-initiated: also forgets the TV for auto-connect. */
   const disconnect = useCallback(() => {
+    saveLastTvId(null);
     connectAbortRef.current?.abort();
     setState({ status: 'disconnected' });
     setLastCommand(null);
@@ -112,6 +119,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     const { signal } = controller;
     const markConnected = async (target: SavedTv, probe: SmartCenterProbeResult) => {
       setState({ status: 'connected', tv: target, probe });
+      saveLastTvId(target.id);
       // Older saved TVs have no identity yet: read it once so future IP changes are handled.
       if (!target.deviceId) {
         const identity = await fetchDeviceIdentity({ ipAddress: target.ipAddress, signal });
@@ -156,8 +164,9 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   }, [updateTv]);
 
   const sendKey = useCallback(
-    (key: RemoteKey) => {
+    (key: RemoteKey, options?: { skipIfBusy?: boolean }) => {
       if (!connectedIp) return;
+      if (options?.skipIfBusy && pendingRef.current >= 2) return;
       enqueue(async () => {
         try {
           const result = await sendSmartCenterKey({ ipAddress: connectedIp, key });
@@ -281,6 +290,17 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       active = false;
     };
   }, []);
+
+  // Auto-connect once on app start to the TV used last time (found by identity if its IP changed).
+  const autoConnectTriedRef = useRef(false);
+  useEffect(() => {
+    if (savedTvsStatus !== 'ready' || autoConnectTriedRef.current) return;
+    autoConnectTriedRef.current = true;
+    loadLastTvId().then((id) => {
+      const tv = id ? tvs.find((t) => t.id === id) : undefined;
+      if (tv) connect(tv);
+    });
+  }, [savedTvsStatus, tvs, connect]);
 
   // Check which apps the TV exposes once per connection.
   useEffect(() => {

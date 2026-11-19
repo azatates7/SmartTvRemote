@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Alert,
   Pressable,
@@ -11,7 +11,7 @@ import {
 
 import { AppBadge } from '@/components/app-badge';
 import { EmptyState } from '@/components/empty-state';
-import { Icon } from '@/components/icon';
+import { Icon, type IconName } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -20,6 +20,7 @@ import type { RemoteKey, TvErrorCode } from '@/domain/tv';
 import { useTranslation, type StringKey } from '@/i18n';
 import { SMART_CENTER_KEY_CODES } from '@/protocols/smart-center/send-key';
 import { useConnection, type AppsState, type CommandTarget } from '@/services/connection-context';
+import { keyFeedback, repeatFeedback } from '@/services/feedback';
 
 const keyNames: Partial<Record<RemoteKey, StringKey>> = {
   up: 'key.up',
@@ -38,6 +39,12 @@ const keyNames: Partial<Record<RemoteKey, StringKey>> = {
   play: 'key.play',
   stop: 'key.stop',
   power: 'key.power',
+  menu: 'key.menu',
+  source: 'key.source',
+  favorites: 'key.favorites',
+  portal: 'key.portal',
+  previous: 'key.previous',
+  next: 'key.next',
 };
 
 const errorKeys: Partial<Record<TvErrorCode, StringKey>> = {
@@ -69,6 +76,7 @@ export default function RemoteScreen() {
   const { t } = useTranslation();
   const { state, lastCommand, sendKey, apps } = useConnection();
   const [numpadOpen, setNumpadOpen] = useState(false);
+  const [page, setPage] = useState<'main' | 'more'>('main');
 
   if (state.status !== 'connected') {
     return (
@@ -78,11 +86,13 @@ export default function RemoteScreen() {
     );
   }
 
-  const confirmPower = () =>
+  const confirmPower = () => {
+    keyFeedback();
     Alert.alert(t('power.confirm.title'), t('power.confirm.message'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('power.confirm.ok'), style: 'destructive', onPress: () => sendKey('power') },
     ]);
+  };
 
   return (
     <Screen title={t('remote.title')}>
@@ -105,45 +115,56 @@ export default function RemoteScreen() {
         ) : null}
       </View>
 
-      <DPadPanel />
+      <PageSwitch page={page} onChange={setPage} />
 
-      {/* Back / 123 / Home / Exit */}
-      <View style={styles.utilityRow}>
-        <Key k="back" style={styles.utilityKey}>
-          <Icon name="back" />
-        </Key>
-        <Pressable
-          onPress={() => setNumpadOpen((open) => !open)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: numpadOpen }}
-          accessibilityLabel={t('remote.numpad')}
-          style={({ pressed }) => [styles.numpadToggle, pressed && styles.pressed]}>
-          <ThemedText type="smallBold">123</ThemedText>
-        </Pressable>
-        <Key k="home" style={styles.utilityKey}>
-          <Icon name="home" />
-        </Key>
-        <Key k="exit" style={styles.utilityKey}>
-          <ThemedText type="smallBold">EXIT</ThemedText>
-        </Key>
-      </View>
+      {page === 'more' ? <MorePage /> : null}
 
-      {numpadOpen ? <Numpad onClose={() => setNumpadOpen(false)} /> : null}
+      {page === 'main' ? (
+        <>
+          <DPadPanel />
 
-      {/* Media */}
-      <View style={styles.mediaRow}>
-        <Key k="play" style={styles.roundKey}>
-          <Icon name="play" />
-        </Key>
-        <Key k="stop" style={styles.roundKey}>
-          <Icon name="stop" />
-        </Key>
-        <Key k="mute" style={styles.roundKey}>
-          <Icon name="mute" />
-        </Key>
-      </View>
+          {/* Back / 123 / Home / Exit */}
+          <View style={styles.utilityRow}>
+            <Key k="back" style={styles.utilityKey}>
+              <Icon name="back" />
+            </Key>
+            <Pressable
+              onPress={() => {
+                keyFeedback();
+                setNumpadOpen((open) => !open);
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: numpadOpen }}
+              accessibilityLabel={t('remote.numpad')}
+              style={({ pressed }) => [styles.numpadToggle, pressed && styles.pressed]}>
+              <ThemedText type="smallBold">123</ThemedText>
+            </Pressable>
+            <Key k="home" style={styles.utilityKey}>
+              <Icon name="home" />
+            </Key>
+            <Key k="exit" style={styles.utilityKey}>
+              <ThemedText type="smallBold">EXIT</ThemedText>
+            </Key>
+          </View>
 
-      <AppShortcuts />
+          {numpadOpen ? <Numpad onClose={() => setNumpadOpen(false)} /> : null}
+
+          {/* Media */}
+          <View style={styles.mediaRow}>
+            <Key k="play" style={styles.roundKey}>
+              <Icon name="play" />
+            </Key>
+            <Key k="stop" style={styles.roundKey}>
+              <Icon name="stop" />
+            </Key>
+            <Key k="mute" style={styles.roundKey}>
+              <Icon name="mute" />
+            </Key>
+          </View>
+
+          <AppShortcuts />
+        </>
+      ) : null}
 
       {/* Last command: lets the user verify each key during testing */}
       <View accessibilityLiveRegion="polite">
@@ -177,16 +198,16 @@ function DPadPanel() {
 
   return (
     <View style={[styles.panel, { width: panel, height }]}>
-      <Key k="volumeUp" style={[styles.corner, styles.topLeft]} label={t('key.volumeUp')}>
+      <Key k="volumeUp" repeat style={[styles.corner, styles.topLeft]} label={t('key.volumeUp')}>
         <ThemedText type="subtitle" style={styles.cornerText}>V+</ThemedText>
       </Key>
-      <Key k="channelUp" style={[styles.corner, styles.topRight]} label={t('key.channelUp')}>
+      <Key k="channelUp" repeat style={[styles.corner, styles.topRight]} label={t('key.channelUp')}>
         <ThemedText type="subtitle" style={styles.cornerText}>P+</ThemedText>
       </Key>
-      <Key k="volumeDown" style={[styles.corner, styles.bottomLeft]} label={t('key.volumeDown')}>
+      <Key k="volumeDown" repeat style={[styles.corner, styles.bottomLeft]} label={t('key.volumeDown')}>
         <ThemedText type="subtitle" style={styles.cornerText}>V−</ThemedText>
       </Key>
-      <Key k="channelDown" style={[styles.corner, styles.bottomRight]} label={t('key.channelDown')}>
+      <Key k="channelDown" repeat style={[styles.corner, styles.bottomRight]} label={t('key.channelDown')}>
         <ThemedText type="subtitle" style={styles.cornerText}>P−</ThemedText>
       </Key>
 
@@ -262,7 +283,10 @@ function AppShortcuts() {
       {installed.map((app) => (
         <Pressable
           key={app.id}
-          onPress={() => launchApp(app.id)}
+          onPress={() => {
+            keyFeedback();
+            launchApp(app.id);
+          }}
           accessibilityRole="button"
           accessibilityLabel={app.label}
           style={({ pressed }) => [styles.appPill, pressed && styles.pressed]}>
@@ -275,30 +299,122 @@ function AppShortcuts() {
 }
 
 /** A remote key. Hidden when the protocol has no code for it (capability-aware UI). */
+const REPEAT_DELAY_MS = 450;
+const REPEAT_INTERVAL_MS = 160;
+
+/**
+ * A remote key with haptic feedback. Hidden when the protocol has no code for it (capability-aware UI).
+ * `repeat`: sends on touch-down and keeps sending while held (volume / channel), skipping presses
+ * while the TV still has requests queued so they never pile up.
+ */
 function Key({
   k,
   style,
   label,
+  repeat,
   children,
 }: {
   k: RemoteKey;
   style?: StyleProp<ViewStyle>;
   /** Spoken label; defaults to the key name. */
   label?: string;
+  repeat?: boolean;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
   const { sendKey } = useConnection();
+  const timers = useRef<{ delay?: ReturnType<typeof setTimeout>; tick?: ReturnType<typeof setInterval> }>({});
+
+  const stopRepeat = () => {
+    clearTimeout(timers.current.delay);
+    clearInterval(timers.current.tick);
+    timers.current = {};
+  };
+  useEffect(() => stopRepeat, []);
+
   if (SMART_CENTER_KEY_CODES[k] === undefined) return null;
+
+  const press = () => {
+    keyFeedback();
+    sendKey(k);
+  };
+
+  const handlers = repeat
+    ? {
+        onPressIn: () => {
+          press();
+          stopRepeat();
+          timers.current.delay = setTimeout(() => {
+            timers.current.tick = setInterval(() => {
+              repeatFeedback();
+              sendKey(k, { skipIfBusy: true });
+            }, REPEAT_INTERVAL_MS);
+          }, REPEAT_DELAY_MS);
+        },
+        onPressOut: stopRepeat,
+      }
+    : { onPress: press };
 
   return (
     <Pressable
-      onPress={() => sendKey(k)}
+      {...handlers}
       accessibilityRole="button"
       accessibilityLabel={label ?? keyLabel(k, t)}
       style={({ pressed }) => [styles.keyBase, style, pressed && styles.pressed]}>
       {children}
     </Pressable>
+  );
+}
+
+function PageSwitch({ page, onChange }: { page: 'main' | 'more'; onChange: (p: 'main' | 'more') => void }) {
+  const { t } = useTranslation();
+  const option = (value: 'main' | 'more', label: string) => (
+    <Pressable
+      onPress={() => {
+        keyFeedback();
+        onChange(value);
+      }}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: page === value }}
+      style={[styles.pageOption, page === value && styles.pageOptionSelected]}>
+      <ThemedText type="smallBold" style={page === value ? styles.pageTextSelected : undefined}>
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+  return (
+    <View style={styles.pageSwitch} accessibilityRole="tablist">
+      {option('main', t('remote.page.main'))}
+      {option('more', t('remote.page.more'))}
+    </View>
+  );
+}
+
+const MORE_KEYS: { k: RemoteKey; icon: IconName }[] = [
+  { k: 'menu', icon: 'menu' },
+  { k: 'source', icon: 'source' },
+  { k: 'favorites', icon: 'favorites' },
+  { k: 'portal', icon: 'portal' },
+  { k: 'previous', icon: 'previous' },
+  { k: 'next', icon: 'next' },
+];
+
+/** Second page: MENU, input source, favorites, Smart portal, previous / next. */
+function MorePage() {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.moreGrid}>
+      {MORE_KEYS.map(({ k, icon }) => (
+        <View key={k} style={styles.moreItem}>
+          <Key k={k} style={styles.roundKey}>
+            <Icon name={icon} />
+          </Key>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.moreCaption}>
+            {keyLabel(k, t)}
+          </ThemedText>
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -308,6 +424,41 @@ const ARROW = 60;
 const ROUND = 64;
 
 const styles = StyleSheet.create({
+  pageSwitch: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    padding: Spacing.one,
+    borderRadius: Radius.card,
+    backgroundColor: Colors.backgroundElement,
+  },
+  pageOption: {
+    flex: 1,
+    minHeight: MinTouchTarget - 8,
+    borderRadius: Radius.card - 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageOptionSelected: {
+    backgroundColor: Colors.accent,
+  },
+  pageTextSelected: {
+    color: Colors.background,
+  },
+  moreGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    rowGap: Spacing.four,
+    paddingVertical: Spacing.three,
+  },
+  moreItem: {
+    width: '33%',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  moreCaption: {
+    textAlign: 'center',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

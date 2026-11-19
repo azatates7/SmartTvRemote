@@ -31,6 +31,12 @@ export const SMART_CENTER_KEY_CODES: Partial<Record<RemoteKey, number>> = {
   play: 1025,
   stop: 1049,
   power: 1012, // 3 sources; disruptive — UI asks for confirmation, never retried
+  menu: 1066,
+  source: 1056,
+  favorites: 1062,
+  portal: 1065, // "internet" key in one source: opens the TV's Smart / portal screen
+  previous: 1027, // pyvesteltv: previous track in media playback
+  next: 1028, // pyvesteltv: next track in media playback
   digit0: 1000,
   digit1: 1001,
   digit2: 1002,

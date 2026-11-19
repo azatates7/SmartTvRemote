@@ -119,6 +119,8 @@ Keys:             POST /apps/SmartCenter, body format A (unquoted) works:
                   <remote><key code=1016 /></remote>
                   Reported working by the tester; per-key list still to confirm
                   (Home 1046 vs 1048, OK vs channel list on 1053, exit, play, stop, digits).
+                  Added 2026-11-18, not yet tested: menu 1066, source 1056, favorites 1062,
+                  portal 1065, previous 1027, next 1028.
 
 DIAL apps:        GET /apps/NoSuchApp_9f3k2 -> 404 (no catch-all)
                   Netflix            GET 200 (stopped)  POST 201 -> app opened
