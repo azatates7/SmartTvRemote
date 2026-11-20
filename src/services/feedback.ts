@@ -9,3 +9,8 @@ export function keyFeedback() {
 export function repeatFeedback() {
   Haptics.selectionAsync().catch(() => {});
 }
+
+/** Warning buzz when a key is pressed but nothing can be sent (no TV connected). */
+export function warningFeedback() {
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+}
