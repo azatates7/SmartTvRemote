@@ -3,6 +3,7 @@ import {
   Alert,
   Pressable,
   StyleSheet,
+  TextInput,
   useWindowDimensions,
   View,
   type StyleProp,
@@ -17,7 +18,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors, MaxContentWidth, MinTouchTarget, Radius, Spacing } from '@/constants/theme';
 import type { RemoteKey, TvErrorCode } from '@/domain/tv';
 import { useTranslation, type StringKey } from '@/i18n';
-import { SMART_CENTER_KEY_CODES } from '@/protocols/smart-center/send-key';
+import {
+  isTestableCode,
+  SMART_CENTER_KEY_CODES,
+  TEST_CODE_MAX,
+  TEST_CODE_MIN,
+} from '@/protocols/smart-center/send-key';
 import { useConnection, type AppsState, type CommandTarget } from '@/services/connection-context';
 import { keyFeedback, repeatFeedback, warningFeedback } from '@/services/feedback';
 
@@ -76,6 +82,7 @@ function keyLabel(key: RemoteKey, t: T): string {
 
 function targetLabel(target: CommandTarget, t: T, apps: AppsState): string {
   if (target.type === 'key') return keyLabel(target.key, t);
+  if (target.type === 'code') return `${t('tester.code')} ${target.code}`;
   const app = apps.status === 'ready' ? apps.apps.find((a) => a.id === target.appId) : undefined;
   return app?.label ?? target.appId;
 }
@@ -426,13 +433,12 @@ function PageSwitch({ page, onChange }: { page: 'main' | 'more'; onChange: (p: '
 const MORE_KEYS: { k: RemoteKey; icon: IconName }[] = [
   { k: 'menu', icon: 'menu' },
   { k: 'source', icon: 'source' },
-  { k: 'youtube', icon: 'youtube' },
   { k: 'portal', icon: 'portal' },
   { k: 'previous', icon: 'previous' },
   { k: 'next', icon: 'next' },
 ];
 
-/** Second page: MENU, input source, YouTube, Smart portal, previous / next. */
+/** Second page: MENU, input source, Smart portal, previous / next. YouTube is opened from the Apps list (key 1062). */
 function MorePage() {
   const { t } = useTranslation();
   return (
@@ -447,6 +453,92 @@ function MorePage() {
           </ThemedText>
         </View>
       ))}
+      <CodeTester />
+    </View>
+  );
+}
+
+/**
+ * TEMPORARY code tester: send any code 1000–1099 (except power) and watch what the TV does.
+ * Used to find INFO, GUIDE and color key codes; remove together with the diagnostics section.
+ */
+function CodeTester() {
+  const { t } = useTranslation();
+  const { sendTestCode } = useConnection();
+  const { connected, warn } = useContext(RemoteGuardContext);
+  const [text, setText] = useState('1015');
+
+  const code = Number(text);
+  const valid = /^\d{4}$/.test(text) && isTestableCode(code);
+
+  // Steps skip the blocked power code so the user can walk through the range with ‹ ›.
+  const step = (delta: number) => {
+    const start = /^\d{4}$/.test(text) ? code : TEST_CODE_MIN;
+    let next = start + delta;
+    while (next >= TEST_CODE_MIN && next <= TEST_CODE_MAX && !isTestableCode(next)) next += delta;
+    if (next < TEST_CODE_MIN || next > TEST_CODE_MAX) return;
+    repeatFeedback();
+    setText(String(next));
+  };
+
+  const send = () => {
+    if (!connected) return warn();
+    if (!valid) return;
+    keyFeedback();
+    sendTestCode(code);
+  };
+
+  return (
+    <View style={styles.tester}>
+      <ThemedText type="smallBold">{t('tester.title')}</ThemedText>
+      <ThemedText type="small" themeColor="textSecondary">
+        {t('tester.hint')}
+      </ThemedText>
+      <View style={styles.testerRow}>
+        <Pressable
+          onPress={() => step(-1)}
+          accessibilityRole="button"
+          accessibilityLabel={t('tester.previous')}
+          style={({ pressed }) => [styles.testerStep, pressed && styles.pressed]}>
+          <Icon name="left" />
+        </Pressable>
+        <TextInput
+          value={text}
+          onChangeText={(value) => setText(value.replace(/[^0-9]/g, '').slice(0, 4))}
+          keyboardType="number-pad"
+          maxLength={4}
+          returnKeyType="send"
+          onSubmitEditing={send}
+          accessibilityLabel={t('tester.code')}
+          style={[styles.testerInput, !valid && styles.testerInputError]}
+        />
+        <Pressable
+          onPress={() => step(1)}
+          accessibilityRole="button"
+          accessibilityLabel={t('tester.next')}
+          style={({ pressed }) => [styles.testerStep, pressed && styles.pressed]}>
+          <Icon name="right" />
+        </Pressable>
+      </View>
+      <Pressable
+        onPress={send}
+        accessibilityRole="button"
+        accessibilityLabel={`${t('tester.send')} ${text}`}
+        accessibilityState={{ disabled: !valid }}
+        style={({ pressed }) => [
+          styles.testerSend,
+          (!valid || !connected) && styles.disabled,
+          pressed && styles.pressed,
+        ]}>
+        <ThemedText type="smallBold" style={{ color: Colors.background }}>
+          {t('tester.send')}
+        </ThemedText>
+      </Pressable>
+      {!valid ? (
+        <ThemedText type="small" style={styles.error}>
+          {t('tester.invalid')}
+        </ThemedText>
+      ) : null}
     </View>
   );
 }
@@ -491,6 +583,51 @@ const styles = StyleSheet.create({
   },
   moreCaption: {
     textAlign: 'center',
+  },
+  tester: {
+    width: '100%',
+    gap: Spacing.two,
+    padding: Spacing.three,
+    borderRadius: Radius.card,
+    backgroundColor: Colors.backgroundElement,
+  },
+  testerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  testerStep: {
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    borderRadius: Radius.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.backgroundSelected,
+  },
+  testerInput: {
+    flex: 1,
+    minWidth: 0,
+    width: 0,
+    minHeight: MinTouchTarget,
+    borderRadius: Radius.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    color: Colors.text,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  testerInputError: {
+    borderColor: Colors.danger,
+  },
+  testerSend: {
+    minHeight: MinTouchTarget,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Radius.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accent,
   },
   header: {
     flexDirection: 'row',

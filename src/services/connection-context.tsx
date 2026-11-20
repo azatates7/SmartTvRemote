@@ -26,7 +26,7 @@ import {
   probeSmartCenter,
   type SmartCenterProbeResult,
 } from '@/protocols/smart-center/probe';
-import { sendSmartCenterKey } from '@/protocols/smart-center/send-key';
+import { sendSmartCenterKey, sendSmartCenterTestCode, type SendKeyResult } from '@/protocols/smart-center/send-key';
 
 import { loadCustomApps, writeCustomApps } from './custom-apps-storage';
 import { loadLastTvId, saveLastTvId } from './last-tv-storage';
@@ -43,7 +43,11 @@ export type ConnectionState =
   | { status: 'connected'; tv: SavedTv; probe: SmartCenterProbeResult }
   | { status: 'error'; tv: SavedTv; code: TvErrorCode };
 
-export type CommandTarget = { type: 'key'; key: RemoteKey } | { type: 'app'; appId: DialAppId };
+export type CommandTarget =
+  | { type: 'key'; key: RemoteKey }
+  | { type: 'app'; appId: DialAppId }
+  /** Raw code from the code tester. */
+  | { type: 'code'; code: number };
 
 export type LastCommand =
   | { target: CommandTarget; ok: true; httpStatus: number; elapsedMs: number }
@@ -63,6 +67,8 @@ type ConnectionContextValue = {
   disconnect: () => void;
   /** `skipIfBusy`: drop the press if the TV still has requests queued (used for held-key repeat). */
   sendKey: (key: RemoteKey, options?: { skipIfBusy?: boolean }) => void;
+  /** Code tester (temporary): sends a raw code; only codes allowed by `isTestableCode`. */
+  sendTestCode: (code: number) => void;
   lastCommand: LastCommand | null;
   apps: AppsState;
   refreshApps: () => void;
@@ -163,25 +169,40 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     }
   }, [updateTv]);
 
+  /** Queues one key request and records its result. Never retried automatically (AGENTS.md). */
+  const sendCommand = useCallback(
+    (target: CommandTarget, run: () => Promise<SendKeyResult>) => {
+      enqueue(async () => {
+        try {
+          const result = await run();
+          setLastCommand(
+            result.httpStatus >= 200 && result.httpStatus < 300
+              ? { target, ok: true, ...result }
+              : { target, ok: false, code: 'unsupported', httpStatus: result.httpStatus },
+          );
+        } catch (error) {
+          setLastCommand({ target, ok: false, code: toCode(error) });
+        }
+      });
+    },
+    [enqueue],
+  );
+
   const sendKey = useCallback(
     (key: RemoteKey, options?: { skipIfBusy?: boolean }) => {
       if (!connectedIp) return;
       if (options?.skipIfBusy && pendingRef.current >= 2) return;
-      enqueue(async () => {
-        try {
-          const result = await sendSmartCenterKey({ ipAddress: connectedIp, key });
-          setLastCommand(
-            result.httpStatus >= 200 && result.httpStatus < 300
-              ? { target: { type: 'key', key }, ok: true, ...result }
-              : { target: { type: 'key', key }, ok: false, code: 'unsupported', httpStatus: result.httpStatus },
-          );
-        } catch (error) {
-          // Never retried automatically (AGENTS.md): the user can press again.
-          setLastCommand({ target: { type: 'key', key }, ok: false, code: toCode(error) });
-        }
-      });
+      sendCommand({ type: 'key', key }, () => sendSmartCenterKey({ ipAddress: connectedIp, key }));
     },
-    [connectedIp, enqueue],
+    [connectedIp, sendCommand],
+  );
+
+  const sendTestCode = useCallback(
+    (code: number) => {
+      if (!connectedIp) return;
+      sendCommand({ type: 'code', code }, () => sendSmartCenterTestCode({ ipAddress: connectedIp, code }));
+    },
+    [connectedIp, sendCommand],
   );
 
   const refreshApps = useCallback(() => {
@@ -326,6 +347,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       connect,
       disconnect,
       sendKey,
+      sendTestCode,
       lastCommand,
       apps,
       refreshApps,
@@ -339,6 +361,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       connect,
       disconnect,
       sendKey,
+      sendTestCode,
       lastCommand,
       apps,
       refreshApps,

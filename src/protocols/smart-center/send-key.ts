@@ -60,6 +60,24 @@ export function buildKeyBody(code: number): string {
 
 export type SendKeyResult = { httpStatus: number; elapsedMs: number };
 
+/**
+ * Code tester (TEMPORARY, like diagnostics): lets the user try unknown key codes on their TV.
+ * Range covers every code seen so far (1000–1066). Power (1012) is excluded: it can turn the TV
+ * off, and the remote already has a power button with a confirmation.
+ */
+export const TEST_CODE_MIN = 1000;
+export const TEST_CODE_MAX = 1099;
+const BLOCKED_TEST_CODES: ReadonlySet<number> = new Set([SMART_CENTER_KEY_CODES.power!]);
+
+export function isTestableCode(code: number): boolean {
+  return (
+    Number.isInteger(code) &&
+    code >= TEST_CODE_MIN &&
+    code <= TEST_CODE_MAX &&
+    !BLOCKED_TEST_CODES.has(code)
+  );
+}
+
 export async function sendSmartCenterKey({
   ipAddress,
   key,
@@ -76,7 +94,36 @@ export async function sendSmartCenterKey({
     // Caller bug: the UI should only offer mapped keys.
     throw new Error(`No Smart Center code for key "${key}"`);
   }
+  return postKeyCode({ ipAddress, code, signal, fetchImpl });
+}
 
+/** Sends a raw code from the code tester. Rejects codes outside the allowed range (and power). */
+export async function sendSmartCenterTestCode({
+  ipAddress,
+  code,
+  signal,
+  fetchImpl,
+}: {
+  ipAddress: string;
+  code: number;
+  signal?: AbortSignal;
+  fetchImpl?: typeof fetch;
+}): Promise<SendKeyResult> {
+  if (!isTestableCode(code)) throw new Error(`Code ${code} is not allowed in the tester`);
+  return postKeyCode({ ipAddress, code, signal, fetchImpl });
+}
+
+async function postKeyCode({
+  ipAddress,
+  code,
+  signal,
+  fetchImpl,
+}: {
+  ipAddress: string;
+  code: number;
+  signal?: AbortSignal;
+  fetchImpl?: typeof fetch;
+}): Promise<SendKeyResult> {
   const response = await smartCenterRequest({
     ipAddress,
     method: 'POST',

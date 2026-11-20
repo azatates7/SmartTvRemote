@@ -24,6 +24,13 @@ export const en = {
   'remote.noTv.title': 'No TV connected',
   'remote.noTv.message': 'Connect to a TV from Home to use the remote.',
   'remote.notSent': 'Not sent: no TV connected. Connect to a TV from Home.',
+  'tester.title': 'Try a code',
+  'tester.hint': 'Send a code and watch the TV. Note what each code does. Power (1012) is not allowed here.',
+  'tester.code': 'Code',
+  'tester.send': 'Send',
+  'tester.previous': 'Previous code',
+  'tester.next': 'Next code',
+  'tester.invalid': 'Enter a code from 1000 to 1099 (except 1012).',
   'remote.connectedTo': 'Connected to',
   'remote.lastCommand': 'Last command:',
   'remote.error.timeout': 'No response from the TV.',
@@ -104,8 +111,6 @@ export const en = {
   'settings.title': 'Settings',
   'settings.section.tv': 'TV',
   'settings.tv.none': 'No saved TV',
-  'settings.tv.addByIp': 'Add by IP address',
-  'settings.tv.manualHint': 'TV not found? You can enter its IP address instead.',
   'settings.tv.remove': 'Remove',
   'settings.tv.storageError': 'Could not access saved TVs on this device. Changes may not be kept.',
   'settings.section.language': 'Language',
@@ -148,7 +153,7 @@ export const en = {
   'check.error.timeout':
     'No response in time. Check that the TV is on, Virtual Remote is enabled, and both devices are on the same Wi-Fi.',
   'check.error.unreachable':
-    'Could not reach the TV. Check the IP address, Wi-Fi connection and (on iPhone) local network permission.',
+    'Could not reach the TV. Check that the TV is on and on the same Wi-Fi network as the phone.',
   'check.error.unknown': 'The check failed for an unknown reason.',
   'check.error.unsupported': 'The TV answered, but the Smart Center service is not available.',
 
@@ -190,6 +195,13 @@ export const tr: Record<StringKey, string> = {
   'remote.noTv.title': 'Bağlı TV yok',
   'remote.noTv.message': 'Kumandayı kullanmak için Ana Sayfa’dan bir TV’ye bağlanın.',
   'remote.notSent': 'Gönderilmedi: bağlı TV yok. Ana Sayfa’dan bir TV’ye bağlanın.',
+  'tester.title': 'Kod dene',
+  'tester.hint': 'Bir kod gönder ve TV’ye bak. Her kodun ne yaptığını not et. Güç (1012) buradan gönderilemez.',
+  'tester.code': 'Kod',
+  'tester.send': 'Gönder',
+  'tester.previous': 'Önceki kod',
+  'tester.next': 'Sonraki kod',
+  'tester.invalid': '1000 ile 1099 arasında bir kod gir (1012 hariç).',
   'remote.connectedTo': 'Bağlı TV:',
   'remote.lastCommand': 'Son komut:',
   'remote.error.timeout': 'TV yanıt vermedi.',
@@ -270,8 +282,6 @@ export const tr: Record<StringKey, string> = {
   'settings.title': 'Ayarlar',
   'settings.section.tv': 'Televizyon',
   'settings.tv.none': 'Kayıtlı TV yok',
-  'settings.tv.addByIp': 'IP adresiyle ekle',
-  'settings.tv.manualHint': 'TV bulunamadı mı? IP adresini elle girebilirsiniz.',
   'settings.tv.remove': 'Kaldır',
   'settings.tv.storageError': 'Bu cihazdaki kayıtlı TV’lere erişilemedi. Değişiklikler saklanmayabilir.',
   'settings.section.language': 'Dil',
@@ -314,7 +324,7 @@ export const tr: Record<StringKey, string> = {
   'check.error.timeout':
     'Zamanında yanıt gelmedi. TV’nin açık, Sanal Kumanda’nın (Virtual Remote) etkin ve iki cihazın aynı Wi-Fi’da olduğunu kontrol edin.',
   'check.error.unreachable':
-    'TV’ye ulaşılamadı. IP adresini, Wi-Fi bağlantısını ve (iPhone’da) yerel ağ iznini kontrol edin.',
+    'TV’ye ulaşılamadı. TV’nin açık ve telefonla aynı Wi-Fi ağında olduğunu kontrol edin.',
   'check.error.unknown': 'Kontrol bilinmeyen bir nedenle başarısız oldu.',
   'check.error.unsupported': 'TV yanıt verdi ama Smart Center hizmeti kullanılamıyor.',
 

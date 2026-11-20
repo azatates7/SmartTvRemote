@@ -1,8 +1,7 @@
 import Constants from 'expo-constants';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { AddTvForm } from '@/components/add-tv-form';
 import { Button } from '@/components/button';
 import { DiagnosticsPanel } from '@/components/diagnostics-panel';
 import { DiscoverTvPanel } from '@/components/discover-tv-panel';
@@ -47,7 +46,6 @@ export default function SettingsScreen() {
 function SavedTvsSection() {
   const { t } = useTranslation();
   const { status, tvs, storageError, removeTv } = useSavedTvs();
-  const [adding, setAdding] = useState(false);
 
   if (status === 'loading') {
     return <Row label={t('common.loading')} />;
@@ -61,7 +59,7 @@ function SavedTvsSection() {
         </ThemedText>
       ) : null}
 
-      {tvs.length === 0 && !adding ? <Row label={t('settings.tv.none')} /> : null}
+      {tvs.length === 0 ? <Row label={t('settings.tv.none')} /> : null}
 
       {tvs.map((tv) => (
         <View key={tv.id} style={styles.tvRow}>
@@ -80,23 +78,8 @@ function SavedTvsSection() {
         </View>
       ))}
 
-      {adding ? (
-        <AddTvForm onDone={() => setAdding(false)} />
-      ) : (
-        <>
-          <DiscoverTvPanel />
-          <View style={styles.addButton}>
-            <ThemedText type="small" themeColor="textSecondary">
-              {t('settings.tv.manualHint')}
-            </ThemedText>
-            <Button
-              label={t('settings.tv.addByIp')}
-              variant="secondary"
-              onPress={() => setAdding(true)}
-            />
-          </View>
-        </>
-      )}
+      {/* TVs are added only by searching the Wi-Fi network (no manual IP entry). */}
+      <DiscoverTvPanel />
     </>
   );
 }
@@ -171,14 +154,6 @@ const styles = StyleSheet.create({
   tvInfo: {
     flexShrink: 1,
     gap: Spacing.half,
-  },
-  addButton: {
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-    paddingBottom: Spacing.three,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.border,
-    paddingTop: Spacing.three,
   },
   errorText: {
     color: Colors.danger,
