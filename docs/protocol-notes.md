@@ -127,6 +127,11 @@ TV-001 answers as a **DIAL 2.2** server (`/apps/SmartCenter`), so standard DIAL 
 - TOD: no public DIAL name found; the app tries `TOD`, `TODTV`, `TOD_TV`, `tod` in order (GET only) and launches with the first that answers 200. TV+ and other local apps: names must be found on the TV before adding them.
 - Implementation: `src/protocols/smart-center/dial-apps.ts`. Paths are restricted to `/apps/[A-Za-z0-9._-]{1,64}`.
 
+**YouTube (TV-001, 2026-11-20):** DIAL `GET /apps/YouTube` answers 403, but remote key **1062** opens
+YouTube. `DIAL_APPS` gives YouTube `launchKey: 'youtube'`: when DIAL answers 403 the app is listed as
+available and launched with that key. On a TV where the key does something else this would be wrong,
+so it only applies when the TV reports YouTube (403), never on 404.
+
 ## 5c. Device identity (location verified on TV-001, 2026-11-18: `:56790/dd.xml`)
 
 DHCP can give the TV a new IP after a restart, so the IP is not an identity.

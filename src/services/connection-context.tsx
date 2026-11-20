@@ -204,12 +204,16 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   const launchApp = useCallback(
     (appId: DialAppId) => {
       if (!connectedIp || apps.status !== 'ready') return;
-      // Only apps the TV reported (with the DIAL name it answered to) can be launched.
-      const dialName = apps.apps.find((app) => app.id === appId && app.installed)?.dialName;
-      if (!dialName) return;
+      // Only apps the TV reported can be launched: with the DIAL name it answered to, or a remote key.
+      const app = apps.apps.find((a) => a.id === appId && a.installed);
+      const { launchKey, dialName } = app ?? {};
+      if (!launchKey && !dialName) return;
       enqueue(async () => {
         try {
-          const result = await launchDialApp({ ipAddress: connectedIp, dialName });
+          const result = launchKey
+            ? await sendSmartCenterKey({ ipAddress: connectedIp, key: launchKey })
+            : await launchDialApp({ ipAddress: connectedIp, dialName: dialName ?? '' });
+          // Keys answer 200; DIAL answers 201 (started) or 200 (already running).
           setLastCommand(
             isLaunchAccepted(result.httpStatus)
               ? { target: { type: 'app', appId }, ok: true, ...result }

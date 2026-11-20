@@ -119,8 +119,10 @@ Keys:             POST /apps/SmartCenter, body format A (unquoted) works:
                   <remote><key code=1016 /></remote>
                   Reported working by the tester; per-key list still to confirm
                   (Home 1046 vs 1048, OK vs channel list on 1053, exit, play, stop, digits).
-                  Added 2026-11-18, not yet tested: menu 1066, source 1056, favorites 1062,
+                  Added 2026-11-18, not yet tested: menu 1066, source 1056,
                   portal 1065, previous 1027, next 1028.
+                  1062 (listed as "favorites" in one source) opens YouTube (2026-11-20);
+                  the app now uses it as the YouTube key and in the Apps list.
 
 DIAL apps:        GET /apps/NoSuchApp_9f3k2 -> 404 (no catch-all)
                   Netflix            GET 200 (stopped)  POST 201 -> app opened
@@ -128,8 +130,8 @@ DIAL apps:        GET /apps/NoSuchApp_9f3k2 -> 404 (no catch-all)
                   YouTube            GET 403 (TV refuses DIAL access)
                   TOD guesses, TV+ guesses -> 404
 
-Open:             How the official app opens YouTube (likely a remote key code).
-                  Channel list / guide endpoint.
+Open:             Channel list / guide endpoint.
+                  (YouTube: solved 2026-11-20, remote key 1062.)
 ```
 
 #### TV-001 — official app capture 2026-11-18 (PCAPdroid, TV at 192.168.1.109)

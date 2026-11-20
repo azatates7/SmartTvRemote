@@ -2,12 +2,16 @@
  * App launching via DIAL (the TV runs a DIAL 2.2 server, see docs/compatibility.md TV-001).
  * Verified on TV-001 (2026-11-18): Netflix and Prime Video (`AmazonInstantVideo`) launch with 201;
  * YouTube answers 403 (the TV does not allow launching it over DIAL); unknown names answer 404.
+ * Apps with a `launchKey` are opened with that remote key instead when DIAL answers 403
+ * (YouTube: key 1062, verified on TV-001 2026-11-20).
  *
  * DIAL REST: `GET /apps/<name>` returns the app's status XML (404 = not installed, no side effects);
  * `POST /apps/<name>` launches it (201 Created when started). YouTube / Netflix / Prime Video use public
  * DIAL registry names. TOD has no published DIAL name, so a few likely names are tried in order (GET only);
  * whichever answers 200 is used to launch. Whether this TV exposes any of them is verified at runtime.
  */
+
+import type { RemoteKey } from '@/domain/tv';
 
 import { smartCenterRequest } from './http';
 
@@ -27,11 +31,13 @@ export type DialAppDefinition = {
   label: string;
   /** DIAL names to try, in order. */
   dialNames: readonly string[];
+  /** Remote key that opens the app when the TV refuses DIAL access (403). */
+  launchKey?: RemoteKey;
 };
 
 /** Apps checked automatically on every connection. */
 export const DIAL_APPS: readonly DialAppDefinition[] = [
-  { id: 'YouTube', label: 'YouTube', dialNames: ['YouTube'] },
+  { id: 'YouTube', label: 'YouTube', dialNames: ['YouTube'], launchKey: 'youtube' },
   { id: 'Netflix', label: 'Netflix', dialNames: ['Netflix'] },
   { id: 'AmazonInstantVideo', label: 'Prime Video', dialNames: ['AmazonInstantVideo'] },
   // Unverified guesses: no public DIAL name found for TOD (2026-11-16).
@@ -46,6 +52,8 @@ export type DialAppStatus = {
   restricted?: boolean;
   /** The DIAL name that answered 200; used to launch. */
   dialName?: string;
+  /** Set when the app is opened with a remote key instead of DIAL. */
+  launchKey?: RemoteKey;
   /** `<state>` from DIAL XML, e.g. "running", "stopped". */
   state?: string;
   httpStatus: number;
@@ -93,6 +101,10 @@ export async function getDialAppStatus({
         httpStatus: response.httpStatus,
       };
     }
+  }
+  // The TV knows the app but refuses DIAL: open it with its remote key instead, if it has one.
+  if (restricted && app.launchKey) {
+    return { id: app.id, label: app.label, installed: true, launchKey: app.launchKey, httpStatus: 403 };
   }
   return {
     id: app.id,

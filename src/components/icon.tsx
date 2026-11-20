@@ -20,7 +20,7 @@ const ICONS = {
   search: { ios: 'magnifyingglass', android: 'search' },
   menu: { ios: 'line.3.horizontal', android: 'menu' },
   source: { ios: 'rectangle.portrait.and.arrow.right', android: 'input' },
-  favorites: { ios: 'star', android: 'star' },
+  youtube: { ios: 'play.rectangle.fill', android: 'smart_display' },
   portal: { ios: 'globe', android: 'language' },
   previous: { ios: 'backward.end.fill', android: 'skip_previous' },
   next: { ios: 'forward.end.fill', android: 'skip_next' },

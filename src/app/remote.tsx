@@ -49,7 +49,7 @@ const keyNames: Partial<Record<RemoteKey, StringKey>> = {
   power: 'key.power',
   menu: 'key.menu',
   source: 'key.source',
-  favorites: 'key.favorites',
+  youtube: 'key.youtube',
   portal: 'key.portal',
   previous: 'key.previous',
   next: 'key.next',
@@ -426,13 +426,13 @@ function PageSwitch({ page, onChange }: { page: 'main' | 'more'; onChange: (p: '
 const MORE_KEYS: { k: RemoteKey; icon: IconName }[] = [
   { k: 'menu', icon: 'menu' },
   { k: 'source', icon: 'source' },
-  { k: 'favorites', icon: 'favorites' },
+  { k: 'youtube', icon: 'youtube' },
   { k: 'portal', icon: 'portal' },
   { k: 'previous', icon: 'previous' },
   { k: 'next', icon: 'next' },
 ];
 
-/** Second page: MENU, input source, favorites, Smart portal, previous / next. */
+/** Second page: MENU, input source, YouTube, Smart portal, previous / next. */
 function MorePage() {
   const { t } = useTranslation();
   return (

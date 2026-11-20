@@ -31,7 +31,7 @@ export type RemoteKey =
   | 'info'
   | 'exit'
   | 'source'
-  | 'favorites'
+  | 'youtube'
   | 'portal'
   | 'previous'
   | 'next'
