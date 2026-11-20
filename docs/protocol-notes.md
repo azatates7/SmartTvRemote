@@ -42,6 +42,33 @@ No official public API, port or command list was found.
 | Connection | `close` (S1 says the TV's server can hang otherwise) | default | `keep-alive` | Prefer `close` until proven otherwise |
 | `application_name` header | not used | not used | not used | AGENTS.md §3.1 mentions it; no reviewed source uses it |
 
+**Resolved by capture (TV-001, 2026-11-18, PCAPdroid on the official Android app):** the official app sends the S3 form.
+
+```text
+POST /apps/SmartCenter HTTP/1.1
+application_name: toshiba smart center
+Content-Type: text/plain; charset=ISO-8859-1
+Connection: Keep-Alive
+Content-Length: 57
+
+<?xml version='1.0' ?><remote><key code='1048'/></remote>
+
+HTTP/1.1 200 OK
+Content-Type: text/plain
+Location: http://<TV_IP>:56789/apps/SmartCenter/run
+```
+
+- The app now sends this body and Content-Type. It keeps `Connection: close` and does not send
+  `application_name` (the unquoted form worked without it, and the header carries a vendor name).
+- Each key is a new TCP connection in the capture, so `close` costs nothing.
+- Other traffic from the official app in the same capture:
+  - SSDP M-SEARCH to 239.255.255.250:1900 every time it opens; **no reply received** (0 bytes).
+  - ICMP ping to the TV every 5 s (reachability check).
+  - **TCP 7681 on the TV**, plain HTTP, ~150 KB received each time the app opens, open 10–40 s.
+    Port 7681 is a common WebSocket port; likely the channel list / guide. Payload not captured yet.
+  - Cloud: `epgimg.s3.eu-west-1.amazonaws.com` (channel logos) and
+    `top-tv-channels-endpoint-…run.app` (HTTPS). Out of scope: the app is local-network only.
+
 ## 4. Candidate key codes (unverified)
 
 | Key | Code | Sources | Notes |

@@ -1,7 +1,9 @@
 /**
  * Key sending for Smart Center TVs: `POST /apps/SmartCenter` with an XML key body.
  *
- * Body format verified on TV-001 (2026-11-18): unquoted code, `<remote><key code=1016 /></remote>`.
+ * Body and Content-Type match the official app (PCAPdroid capture on TV-001, 2026-11-18):
+ *   `<?xml version='1.0' ?><remote><key code='1048'/></remote>`, `text/plain; charset=ISO-8859-1`.
+ * The older unquoted form (`<remote><key code=1016 /></remote>`) also worked on TV-001.
  * Key codes come from community sources; see docs/compatibility.md for which are verified.
  * Power is mapped, but the UI must confirm before sending it.
  */
@@ -26,7 +28,7 @@ export const SMART_CENTER_KEY_CODES: Partial<Record<RemoteKey, number>> = {
   right: 1022,
   ok: 1053,
   back: 1010,
-  home: 1048, // conflict: another source says 1046
+  home: 1048, // official app sent 1048 in the 2026-11-18 capture; another source says 1046
   exit: 1037,
   play: 1025,
   stop: 1049,
@@ -50,9 +52,10 @@ export const SMART_CENTER_KEY_CODES: Partial<Record<RemoteKey, number>> = {
 };
 
 const KEY_TIMEOUT_MS = 3000;
+const KEY_CONTENT_TYPE = 'text/plain; charset=ISO-8859-1';
 
 export function buildKeyBody(code: number): string {
-  return `<remote><key code=${code} /></remote>`;
+  return `<?xml version='1.0' ?><remote><key code='${code}'/></remote>`;
 }
 
 export type SendKeyResult = { httpStatus: number; elapsedMs: number };
@@ -78,7 +81,7 @@ export async function sendSmartCenterKey({
     ipAddress,
     method: 'POST',
     body: buildKeyBody(code),
-    contentType: 'application/xml',
+    contentType: KEY_CONTENT_TYPE,
     timeoutMs: KEY_TIMEOUT_MS,
     signal,
     fetchImpl,

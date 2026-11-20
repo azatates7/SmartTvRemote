@@ -131,3 +131,15 @@ DIAL apps:        GET /apps/NoSuchApp_9f3k2 -> 404 (no catch-all)
 Open:             How the official app opens YouTube (likely a remote key code).
                   Channel list / guide endpoint.
 ```
+
+#### TV-001 — official app capture 2026-11-18 (PCAPdroid, TV at 192.168.1.109)
+
+```text
+Key request:      POST /apps/SmartCenter
+                  Content-Type: text/plain; charset=ISO-8859-1
+                  <?xml version='1.0' ?><remote><key code='1048'/></remote>
+                  -> 200 OK, Location: .../apps/SmartCenter/run
+                  App switched to this body/Content-Type on 2026-11-19; retest needed.
+SSDP:             M-SEARCH sent, no reply.
+Port 7681:        HTTP, ~150 KB per app start; probably channel list (payload not yet seen).
+```

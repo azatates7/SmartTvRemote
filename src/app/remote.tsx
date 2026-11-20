@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Alert,
   Pressable,
@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 
 import { AppBadge } from '@/components/app-badge';
-import { EmptyState } from '@/components/empty-state';
 import { Icon, type IconName } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -20,7 +19,16 @@ import type { RemoteKey, TvErrorCode } from '@/domain/tv';
 import { useTranslation, type StringKey } from '@/i18n';
 import { SMART_CENTER_KEY_CODES } from '@/protocols/smart-center/send-key';
 import { useConnection, type AppsState, type CommandTarget } from '@/services/connection-context';
-import { keyFeedback, repeatFeedback } from '@/services/feedback';
+import { keyFeedback, repeatFeedback, warningFeedback } from '@/services/feedback';
+
+/**
+ * Keys stay visible without a connection, so the layout does not jump.
+ * Pressing one then sends nothing and shows a warning instead.
+ */
+type RemoteGuard = { connected: boolean; warn: () => void };
+const RemoteGuardContext = createContext<RemoteGuard>({ connected: true, warn: () => {} });
+
+const WARNING_VISIBLE_MS = 2500;
 
 const keyNames: Partial<Record<RemoteKey, StringKey>> = {
   up: 'key.up',
@@ -77,16 +85,24 @@ export default function RemoteScreen() {
   const { state, lastCommand, sendKey, apps } = useConnection();
   const [numpadOpen, setNumpadOpen] = useState(false);
   const [page, setPage] = useState<'main' | 'more'>('main');
+  const connected = state.status === 'connected';
 
-  if (state.status !== 'connected') {
-    return (
-      <Screen title={t('remote.title')}>
-        <EmptyState title={t('remote.noTv.title')} message={t('remote.noTv.message')} />
-      </Screen>
-    );
-  }
+  // Highlighted for a moment when a key is pressed without a connection.
+  const [warning, setWarning] = useState(false);
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const warn = useCallback(() => {
+    warningFeedback();
+    setWarning(true);
+    clearTimeout(warningTimer.current);
+    warningTimer.current = setTimeout(() => setWarning(false), WARNING_VISIBLE_MS);
+  }, []);
+  useEffect(() => () => clearTimeout(warningTimer.current), []);
+  useEffect(() => {
+    if (connected) setWarning(false);
+  }, [connected]);
 
   const confirmPower = () => {
+    if (!connected) return warn();
     keyFeedback();
     Alert.alert(t('power.confirm.title'), t('power.confirm.message'), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -94,13 +110,26 @@ export default function RemoteScreen() {
     ]);
   };
 
+  const statusText =
+    state.status === 'connected'
+      ? `${t('remote.connectedTo')} ${state.tv.name}`
+      : state.status === 'connecting'
+        ? t(state.searching ? 'connection.searching' : 'connection.connecting')
+        : warning
+          ? t('remote.notSent')
+          : t('remote.noTv.message');
+
   return (
+    <RemoteGuardContext.Provider value={{ connected, warn }}>
     <Screen title={t('remote.title')}>
       <View style={styles.header}>
-        <View style={styles.headerText}>
-          <View style={styles.dot} />
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            {`${t('remote.connectedTo')} ${state.tv.name}`}
+        <View style={styles.headerText} accessibilityLiveRegion="polite">
+          <View style={[styles.dot, !connected && styles.dotOff]} />
+          <ThemedText
+            type="small"
+            themeColor={warning ? undefined : 'textSecondary'}
+            style={[styles.statusText, warning && styles.error]}>
+            {statusText}
           </ThemedText>
         </View>
         {SMART_CENTER_KEY_CODES.power !== undefined ? (
@@ -168,7 +197,7 @@ export default function RemoteScreen() {
 
       {/* Last command: lets the user verify each key during testing */}
       <View accessibilityLiveRegion="polite">
-        {lastCommand ? (
+        {connected && lastCommand ? (
           <ThemedText
             type="small"
             style={lastCommand.ok ? undefined : styles.error}
@@ -184,6 +213,7 @@ export default function RemoteScreen() {
       </View>
 
     </Screen>
+    </RemoteGuardContext.Provider>
   );
 }
 
@@ -323,6 +353,7 @@ function Key({
 }) {
   const { t } = useTranslation();
   const { sendKey } = useConnection();
+  const { connected, warn } = useContext(RemoteGuardContext);
   const timers = useRef<{ delay?: ReturnType<typeof setTimeout>; tick?: ReturnType<typeof setInterval> }>({});
 
   const stopRepeat = () => {
@@ -339,7 +370,9 @@ function Key({
     sendKey(k);
   };
 
-  const handlers = repeat
+  const handlers = !connected
+    ? { onPress: warn }
+    : repeat
     ? {
         onPressIn: () => {
           press();
@@ -360,7 +393,7 @@ function Key({
       {...handlers}
       accessibilityRole="button"
       accessibilityLabel={label ?? keyLabel(k, t)}
-      style={({ pressed }) => [styles.keyBase, style, pressed && styles.pressed]}>
+      style={({ pressed }) => [styles.keyBase, style, !connected && styles.disabled, pressed && styles.pressed]}>
       {children}
     </Pressable>
   );
@@ -476,6 +509,15 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     backgroundColor: Colors.accent,
+  },
+  dotOff: {
+    backgroundColor: Colors.textSecondary,
+  },
+  statusText: {
+    flexShrink: 1,
+  },
+  disabled: {
+    opacity: 0.45,
   },
   powerButton: {
     width: MinTouchTarget,

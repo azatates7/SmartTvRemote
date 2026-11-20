@@ -17,8 +17,8 @@ export const Colors = {
   border: '#2A2E31',
   text: '#F2F4F3',
   textSecondary: '#A3AAA7',
-  /** Brand accent (original color, not taken from any vendor branding) */
-  accent: '#4CC38A',
+  /** Brand accent: matches the app icon's orange (original color, not taken from vendor branding). */
+  accent: '#FF7A2F',
   danger: '#F2555A',
 } as const;
 
