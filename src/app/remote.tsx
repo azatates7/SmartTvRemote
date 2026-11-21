@@ -10,7 +10,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { AppBadge } from '@/components/app-badge';
 import { Icon, type IconName } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -56,6 +55,10 @@ const keyNames: Partial<Record<RemoteKey, StringKey>> = {
   menu: 'key.menu',
   source: 'key.source',
   youtube: 'key.youtube',
+  lastChannel: 'key.lastChannel',
+  teletext: 'key.teletext',
+  disneyPlus: 'key.disneyPlus',
+  tabii: 'key.tabii',
   portal: 'key.portal',
   previous: 'key.previous',
   next: 'key.next',
@@ -197,8 +200,6 @@ export default function RemoteScreen() {
               <Icon name="mute" />
             </Key>
           </View>
-
-          <AppShortcuts />
         </>
       ) : null}
 
@@ -308,33 +309,6 @@ function Numpad({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Launch buttons for DIAL apps the TV reported as installed. Text labels only (no brand logos). */
-function AppShortcuts() {
-  const { apps, launchApp } = useConnection();
-  if (apps.status !== 'ready') return null;
-  const installed = apps.apps.filter((app) => app.installed);
-  if (installed.length === 0) return null;
-
-  return (
-    <View style={styles.appsRow}>
-      {installed.map((app) => (
-        <Pressable
-          key={app.id}
-          onPress={() => {
-            keyFeedback();
-            launchApp(app.id);
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={app.label}
-          style={({ pressed }) => [styles.appPill, pressed && styles.pressed]}>
-          <AppBadge appId={app.id} label={app.label} size={30} />
-          <ThemedText type="smallBold">{app.label}</ThemedText>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
 /** A remote key. Hidden when the protocol has no code for it (capability-aware UI). */
 const REPEAT_DELAY_MS = 450;
 const REPEAT_INTERVAL_MS = 160;
@@ -431,6 +405,8 @@ function PageSwitch({ page, onChange }: { page: 'main' | 'more'; onChange: (p: '
 }
 
 const MORE_KEYS: { k: RemoteKey; icon: IconName }[] = [
+  { k: 'lastChannel', icon: 'lastChannel' },
+  { k: 'teletext', icon: 'teletext' },
   { k: 'menu', icon: 'menu' },
   { k: 'source', icon: 'source' },
   { k: 'portal', icon: 'portal' },
@@ -438,7 +414,7 @@ const MORE_KEYS: { k: RemoteKey; icon: IconName }[] = [
   { k: 'next', icon: 'next' },
 ];
 
-/** Second page: MENU, input source, Smart portal, previous / next. YouTube is opened from the Apps list (key 1062). */
+/** Second page: last channel, teletext, MENU, source, Web portal, previous / next. Apps opened by key (YouTube, Disney+, tabii) live in the Apps list. */
 function MorePage() {
   const { t } = useTranslation();
   return (
@@ -470,6 +446,14 @@ function CodeTester() {
 
   const code = Number(text);
   const valid = /^\d{4}$/.test(text) && isTestableCode(code);
+  // Why the code cannot be sent; the input only accepts digits, at most 4.
+  const problem = valid
+    ? null
+    : code === SMART_CENTER_KEY_CODES.power
+      ? t('tester.blocked').replace('{code}', String(code))
+      : t('tester.invalid')
+          .replace('{min}', String(TEST_CODE_MIN))
+          .replace('{max}', String(TEST_CODE_MAX));
 
   // Steps skip the blocked power code so the user can walk through the range with ‹ ›.
   const step = (delta: number) => {
@@ -492,7 +476,9 @@ function CodeTester() {
     <View style={styles.tester}>
       <ThemedText type="smallBold">{t('tester.title')}</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
-        {t('tester.hint')}
+        {t('tester.hint')
+          .replace('{min}', String(TEST_CODE_MIN))
+          .replace('{max}', String(TEST_CODE_MAX))}
       </ThemedText>
       <View style={styles.testerRow}>
         <Pressable
@@ -522,6 +508,7 @@ function CodeTester() {
       </View>
       <Pressable
         onPress={send}
+        disabled={connected && !valid}
         accessibilityRole="button"
         accessibilityLabel={`${t('tester.send')} ${text}`}
         accessibilityState={{ disabled: !valid }}
@@ -534,9 +521,9 @@ function CodeTester() {
           {t('tester.send')}
         </ThemedText>
       </Pressable>
-      {!valid ? (
-        <ThemedText type="small" style={styles.error}>
-          {t('tester.invalid')}
+      {problem ? (
+        <ThemedText type="small" style={styles.error} accessibilityLiveRegion="polite">
+          {problem}
         </ThemedText>
       ) : null}
     </View>
@@ -770,23 +757,6 @@ const styles = StyleSheet.create({
     height: ROUND + 8,
     borderRadius: (ROUND + 8) / 2,
     backgroundColor: Colors.backgroundSelected,
-  },
-  appsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: Spacing.two,
-  },
-  appPill: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    minHeight: MinTouchTarget,
-    paddingLeft: Spacing.two,
-    paddingRight: Spacing.four,
-    borderRadius: MinTouchTarget / 2,
-    backgroundColor: Colors.backgroundSelected,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   error: {
     color: Colors.danger,

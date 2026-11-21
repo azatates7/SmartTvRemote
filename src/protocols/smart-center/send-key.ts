@@ -36,6 +36,11 @@ export const SMART_CENTER_KEY_CODES: Partial<Record<RemoteKey, number>> = {
   menu: 1066,
   source: 1056,
   youtube: 1062, // verified on TV-001 (2026-11-20): opens YouTube; one source called it "favorites"
+  // Verified on TV-001 with the code tester (2026-11-21):
+  lastChannel: 1034, // back to the previous channel
+  teletext: 1060,
+  disneyPlus: 1077, // opens Disney+
+  tabii: 1080, // opens tabii
   portal: 1065, // "internet" key in one source: opens the TV's Smart / portal screen
   previous: 1027, // pyvesteltv: previous track in media playback
   next: 1028, // pyvesteltv: next track in media playback
@@ -62,11 +67,12 @@ export type SendKeyResult = { httpStatus: number; elapsedMs: number };
 
 /**
  * Code tester (TEMPORARY, like diagnostics): lets the user try unknown key codes on their TV.
- * Range covers every code seen so far (1000–1066). Power (1012) is excluded: it can turn the TV
- * off, and the remote already has a power button with a confirmation.
+ * Any 4-digit code (1000–9999): codes seen so far are 1000–1082, but higher ones may exist.
+ * Power (1012) is excluded: it can turn the TV off, and the remote already has a power button
+ * with a confirmation.
  */
 export const TEST_CODE_MIN = 1000;
-export const TEST_CODE_MAX = 1099;
+export const TEST_CODE_MAX = 9999;
 const BLOCKED_TEST_CODES: ReadonlySet<number> = new Set([SMART_CENTER_KEY_CODES.power!]);
 
 export function isTestableCode(code: number): boolean {

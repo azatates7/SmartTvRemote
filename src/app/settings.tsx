@@ -1,15 +1,16 @@
 import Constants from 'expo-constants';
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { DiagnosticsPanel } from '@/components/diagnostics-panel';
 import { DiscoverTvPanel } from '@/components/discover-tv-panel';
+import { Icon } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, MinTouchTarget, Radius, Spacing } from '@/constants/theme';
-import { useTranslation } from '@/i18n';
+import { useLanguagePreference, useTranslation, type LanguagePreference } from '@/i18n';
 import { useSavedTvs } from '@/services/saved-tvs-context';
 
 export default function SettingsScreen() {
@@ -28,11 +29,7 @@ export default function SettingsScreen() {
       </Section>
 
       <Section title={t('settings.section.language')}>
-        <Row
-          label={t('settings.language.current')}
-          value={t('language.name')}
-          note={t('settings.language.followsDevice')}
-        />
+        <LanguagePicker />
       </Section>
 
       <Section title={t('settings.section.about')}>
@@ -97,6 +94,52 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+/** Device language is the default; Turkish / English are fixed choices, kept after restart. */
+function LanguagePicker() {
+  const { t } = useTranslation();
+  const { preference, setPreference } = useLanguagePreference();
+  const options: { value: LanguagePreference; label: string; note?: string }[] = [
+    {
+      value: 'system',
+      label: t('settings.language.system'),
+      note: t('settings.language.followsDevice'),
+    },
+    // Each language is named in itself, so it can be found whatever the current language is.
+    { value: 'tr', label: 'Türkçe' },
+    { value: 'en', label: 'English' },
+  ];
+
+  return (
+    <View accessibilityRole="radiogroup">
+      {options.map((option, index) => {
+        const selected = preference === option.value;
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() => setPreference(option.value)}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: selected }}
+            style={({ pressed }) => [
+              styles.languageOption,
+              index > 0 && styles.languageDivider,
+              pressed && styles.pressed,
+            ]}>
+            <View style={styles.tvInfo}>
+              <ThemedText type="small">{option.label}</ThemedText>
+              {option.note ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {option.note}
+                </ThemedText>
+              ) : null}
+            </View>
+            {selected ? <Icon name="check" color={Colors.accent} /> : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 function Row({ label, value, note }: { label: string; value?: string; note?: string }) {
   return (
     <View style={styles.row} accessible>
@@ -154,6 +197,21 @@ const styles = StyleSheet.create({
   tvInfo: {
     flexShrink: 1,
     gap: Spacing.half,
+  },
+  languageOption: {
+    minHeight: MinTouchTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  languageDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   errorText: {
     color: Colors.danger,

@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import AppTabs from '@/components/app-tabs';
 import { Colors } from '@/constants/theme';
+import { LanguageProvider } from '@/i18n';
 import { ConnectionProvider } from '@/services/connection-context';
 import { SavedTvsProvider } from '@/services/saved-tvs-context';
 
@@ -22,11 +23,13 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={navigationTheme}>
       <StatusBar style="light" />
-      <SavedTvsProvider>
-        <ConnectionProvider>
-          <AppTabs />
-        </ConnectionProvider>
-      </SavedTvsProvider>
+      <LanguageProvider>
+        <SavedTvsProvider>
+          <ConnectionProvider>
+            <AppTabs />
+          </ConnectionProvider>
+        </SavedTvsProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

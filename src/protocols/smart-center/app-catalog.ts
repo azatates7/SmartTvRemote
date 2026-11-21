@@ -14,10 +14,8 @@ export type CatalogApp = DialAppDefinition & {
 };
 
 export const APP_CATALOG: readonly CatalogApp[] = [
-  { id: 'disneyplus', label: 'Disney+', dialNames: ['DisneyPlus', 'Disney'], aliases: ['disney plus'] },
   { id: 'tvplus', label: 'TV+', dialNames: ['TVPlus', 'TvPlus', 'tvplus'], aliases: ['tv plus', 'turk telekom'] },
   { id: 'exxen', label: 'Exxen', dialNames: ['Exxen', 'exxen'] },
-  { id: 'tabii', label: 'tabii', dialNames: ['tabii', 'Tabii', 'TRTtabii'], aliases: ['trt'] },
   { id: 'hbomax', label: 'HBO Max', dialNames: ['HBOMax', 'HBOmax', 'Max'], aliases: ['blutv', 'max'] },
   { id: 'puhutv', label: 'puhutv', dialNames: ['puhutv', 'PuhuTV'], aliases: ['puhu'] },
   { id: 'gain', label: 'Gain', dialNames: ['Gain', 'gain'] },

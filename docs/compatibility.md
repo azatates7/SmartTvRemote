@@ -145,3 +145,24 @@ Key request:      POST /apps/SmartCenter
 SSDP:             M-SEARCH sent, no reply.
 Port 7681:        HTTP, ~150 KB per app start; probably channel list (payload not yet seen).
 ```
+
+#### TV-001 — code tester results 2026-11-21
+
+Found with the in-app code tester (Remote > More > Try a code). Codes not listed did nothing visible
+or were not tried.
+
+```text
+1034  previous channel        -> key 'lastChannel' (More page)
+1040  favorite channels       (not used yet)
+1047  guide (TV EPG)          (not used yet)
+1053  OK / channel list       (already 'ok')
+1060  teletext                -> key 'teletext' (More page)
+1062  YouTube                 -> Apps list (launchKey)
+1067  football menu           (not used)
+1077  Disney+                 -> Apps list (launchKey, key-only app)
+1080  tabii                   -> Apps list (launchKey, key-only app)
+1082  TV settings             (not used yet)
+```
+
+Disney+ and tabii have no DIAL entry, so the app cannot check whether they are installed; they are
+always listed and opened with their key.

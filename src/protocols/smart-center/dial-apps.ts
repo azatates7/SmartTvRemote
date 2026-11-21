@@ -39,9 +39,13 @@ export type DialAppDefinition = {
 export const DIAL_APPS: readonly DialAppDefinition[] = [
   { id: 'YouTube', label: 'YouTube', dialNames: ['YouTube'], launchKey: 'youtube' },
   { id: 'Netflix', label: 'Netflix', dialNames: ['Netflix'] },
-  { id: 'AmazonInstantVideo', label: 'Prime Video', dialNames: ['AmazonInstantVideo'] },
+  { id: 'AmazonInstantVideo', label: 'Amazon Prime Video', dialNames: ['AmazonInstantVideo'] },
   // Unverified guesses: no public DIAL name found for TOD (2026-11-16).
   { id: 'TOD', label: 'TOD', dialNames: ['TOD', 'TODTV', 'TOD_TV', 'tod'] },
+  // Not on DIAL; opened with their own remote key (verified on TV-001, 2026-11-21).
+  // The TV cannot tell us whether they are installed, so they are always listed.
+  { id: 'disneyplus', label: 'Disney+', dialNames: [], launchKey: 'disneyPlus' },
+  { id: 'tabii', label: 'tabii', dialNames: [], launchKey: 'tabii' },
 ];
 
 export type DialAppStatus = {
@@ -78,6 +82,10 @@ export async function getDialAppStatus({
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
 }): Promise<DialAppStatus> {
+  // Key-only app: nothing to ask the TV, it is opened with its remote key.
+  if (app.dialNames.length === 0 && app.launchKey) {
+    return { id: app.id, label: app.label, installed: true, launchKey: app.launchKey, httpStatus: 0 };
+  }
   let lastStatus = 0;
   let restricted = false;
   for (const dialName of app.dialNames) {
