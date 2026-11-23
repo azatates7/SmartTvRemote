@@ -23,6 +23,7 @@ const ICONS = {
   source: { ios: 'rectangle.portrait.and.arrow.right', android: 'input' },
   lastChannel: { ios: 'arrow.uturn.left.circle', android: 'history' },
   teletext: { ios: 'text.alignleft', android: 'subject' },
+  guide: { ios: 'list.bullet.rectangle', android: 'list_alt' },
   portal: { ios: 'globe', android: 'language' },
   previous: { ios: 'backward.end.fill', android: 'skip_previous' },
   next: { ios: 'forward.end.fill', android: 'skip_next' },

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { AppBadge } from '@/components/app-badge';
@@ -24,6 +24,7 @@ import {
   type DialAppStatus,
 } from '@/protocols/smart-center/dial-apps';
 import { useConnection, type AddAppResult } from '@/services/connection-context';
+import { warningFeedback } from '@/services/feedback';
 
 const errorKeys: Partial<Record<TvErrorCode, StringKey>> = {
   timeout: 'remote.error.timeout',
@@ -43,13 +44,7 @@ export default function AppsScreen() {
   const { state, apps, refreshApps, launchApp, lastCommand, customAppIds, removeApp } =
     useConnection();
 
-  if (state.status !== 'connected') {
-    return (
-      <Screen title={t('apps.title')}>
-        <EmptyState title={t('apps.noTv.title')} message={t('apps.noTv.message')} />
-      </Screen>
-    );
-  }
+  if (state.status !== 'connected') return <OfflineApps />;
 
   if (apps.status !== 'ready') {
     return (
@@ -141,6 +136,92 @@ export default function AppsScreen() {
       <View style={styles.actions}>
         <Button label={t('apps.refresh')} variant="secondary" onPress={refreshApps} />
       </View>
+    </Screen>
+  );
+}
+
+/**
+ * No TV connected: show the last connected TV and the apps it reported, with a Connect button.
+ * Opening an app needs the connection, so Open only shows a warning here.
+ */
+function OfflineApps() {
+  const { t } = useTranslation();
+  const { state, connect, lastTv } = useConnection();
+  const [warning, setWarning] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  if (!lastTv) {
+    return (
+      <Screen title={t('apps.title')}>
+        <EmptyState title={t('apps.noTv.title')} message={t('apps.noTv.message')} />
+      </Screen>
+    );
+  }
+
+  const warn = () => {
+    warningFeedback();
+    setWarning(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setWarning(false), 2500);
+  };
+
+  const status =
+    state.status === 'connecting'
+      ? t(state.searching ? 'connection.searching' : 'connection.connecting')
+      : state.status === 'error'
+        ? t(errorKeys[state.code] ?? 'check.error.unknown')
+        : t('connection.notConnected');
+
+  return (
+    <Screen title={t('apps.title')}>
+      <ThemedView type="backgroundElement" style={styles.lastTvCard}>
+        <View style={styles.info} accessible>
+          <ThemedText type="small" themeColor="textSecondary">
+            {t('connection.lastTv')}
+          </ThemedText>
+          <ThemedText type="smallBold">{lastTv.tv.name}</ThemedText>
+          <ThemedText
+            type="small"
+            themeColor={state.status === 'error' ? undefined : 'textSecondary'}
+            style={state.status === 'error' ? styles.error : undefined}
+            accessibilityLiveRegion="polite">
+            {status}
+          </ThemedText>
+        </View>
+        {state.status !== 'connecting' ? (
+          <Button label={t('connection.connect')} onPress={() => connect(lastTv.tv)} />
+        ) : null}
+      </ThemedView>
+
+      {lastTv.apps.length > 0 ? (
+        <ThemedView type="backgroundElement" style={[styles.card, styles.offline]}>
+          {lastTv.apps.map((app, index) => (
+            <View
+              key={app.id}
+              style={[styles.row, index < lastTv.apps.length - 1 && styles.rowDivider]}>
+              <AppBadge appId={app.id} label={app.label} />
+              <View style={styles.info}>
+                <ThemedText type="smallBold">{app.label}</ThemedText>
+              </View>
+              <Button
+                label={t('apps.open')}
+                variant="secondary"
+                accessibilityLabel={`${t('apps.open')}: ${app.label}`}
+                onPress={warn}
+              />
+            </View>
+          ))}
+        </ThemedView>
+      ) : null}
+
+      <ThemedText
+        type="small"
+        themeColor={warning ? undefined : 'textSecondary'}
+        style={warning ? styles.error : undefined}
+        accessibilityLiveRegion="polite">
+        {t('apps.offline.needConnection')}
+      </ThemedText>
     </Screen>
   );
 }
@@ -278,6 +359,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     paddingVertical: Spacing.three,
+  },
+  lastTvCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.three,
+    borderRadius: Radius.card,
+  },
+  offline: {
+    opacity: 0.7,
   },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,

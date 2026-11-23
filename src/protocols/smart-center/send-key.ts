@@ -39,6 +39,7 @@ export const SMART_CENTER_KEY_CODES: Partial<Record<RemoteKey, number>> = {
   // Verified on TV-001 with the code tester (2026-11-21):
   lastChannel: 1034, // back to the previous channel
   teletext: 1060,
+  guide: 1047, // TV's own programme guide (EPG)
   disneyPlus: 1077, // opens Disney+
   tabii: 1080, // opens tabii
   portal: 1065, // "internet" key in one source: opens the TV's Smart / portal screen

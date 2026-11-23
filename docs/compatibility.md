@@ -7,7 +7,7 @@
 
 | TV model | Product code | Firmware | Region | Discovery | Verified commands | Last tested | Record |
 |----------|--------------|----------|--------|-----------|-------------------|-------------|--------|
-| Toshiba 50UL2163DT (Vestel MB180) | _TBD_ | _TBD_ | TR | Wi-Fi /24 scan: found; UDN at `:56790/dd.xml` | Keys (Format A); Netflix, Prime Video via DIAL | 2026-11-18 | TV-001 |
+| Toshiba 50UL2163DT (Vestel MB180) | _TBD_ | _TBD_ | TR | Wi-Fi /24 scan: found; UDN at `:56790/dd.xml` | Keys (official XML form); Netflix, Prime Video via DIAL; YouTube, Disney+, tabii via keys; last channel, teletext, guide | 2026-11-21 | TV-001 |
 
 ---
 

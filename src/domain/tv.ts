@@ -34,6 +34,7 @@ export type RemoteKey =
   | 'youtube'
   | 'lastChannel'
   | 'teletext'
+  | 'guide'
   | 'disneyPlus'
   | 'tabii'
   | 'portal'

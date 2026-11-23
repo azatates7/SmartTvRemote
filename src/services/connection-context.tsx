@@ -29,6 +29,7 @@ import {
 import { sendSmartCenterKey, sendSmartCenterTestCode, type SendKeyResult } from '@/protocols/smart-center/send-key';
 
 import { loadCustomApps, writeCustomApps } from './custom-apps-storage';
+import { loadLastTvApps, saveLastTvApps, type LastTvApps } from './last-tv-apps-storage';
 import { loadLastTvId, saveLastTvId } from './last-tv-storage';
 import { useSavedTvs } from './saved-tvs-context';
 
@@ -78,6 +79,11 @@ type ConnectionContextValue = {
   /** Checks the app on the TV (read-only GETs) and saves it only if the TV knows it. */
   addApp: (app: DialAppDefinition) => Promise<AddAppResult>;
   removeApp: (appId: DialAppId) => void;
+  /**
+   * Last TV that reported its apps, with those apps. Shown while no TV is connected;
+   * null if that TV was removed or nothing was saved yet.
+   */
+  lastTv: { tv: SavedTv; apps: LastTvApps['apps'] } | null;
 };
 
 const ConnectionContext = createContext<ConnectionContextValue | null>(null);
@@ -90,6 +96,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   const [lastCommand, setLastCommand] = useState<LastCommand | null>(null);
   const [apps, setApps] = useState<AppsState>({ status: 'idle' });
   const [customApps, setCustomApps] = useState<DialAppDefinition[]>([]);
+  const [lastTvApps, setLastTvApps] = useState<LastTvApps | null>(null);
   const customAppsRef = useRef<DialAppDefinition[]>([]);
 
   const connectAbortRef = useRef<AbortController | null>(null);
@@ -317,6 +324,27 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Auto-connect once on app start to the TV used last time (found by identity if its IP changed).
+  // Remember the connected TV's apps for display while disconnected.
+  useEffect(() => {
+    loadLastTvApps().then((stored) => {
+      if (stored) setLastTvApps((current) => current ?? stored);
+    });
+  }, []);
+  const connectedTvId = state.status === 'connected' ? state.tv.id : null;
+  useEffect(() => {
+    if (!connectedTvId || apps.status !== 'ready') return;
+    const value: LastTvApps = {
+      tvId: connectedTvId,
+      apps: apps.apps.filter((a) => a.installed).map(({ id, label }) => ({ id, label })),
+    };
+    setLastTvApps(value);
+    saveLastTvApps(value);
+  }, [connectedTvId, apps]);
+  const lastTv = useMemo(() => {
+    const tv = lastTvApps ? tvs.find((t) => t.id === lastTvApps.tvId) : undefined;
+    return tv && lastTvApps ? { tv, apps: lastTvApps.apps } : null;
+  }, [lastTvApps, tvs]);
+
   const autoConnectTriedRef = useRef(false);
   useEffect(() => {
     if (savedTvsStatus !== 'ready' || autoConnectTriedRef.current) return;
@@ -355,6 +383,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       customAppIds,
       addApp,
       removeApp,
+      lastTv,
     }),
     [
       state,
@@ -369,6 +398,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       customAppIds,
       addApp,
       removeApp,
+      lastTv,
     ],
   );
 

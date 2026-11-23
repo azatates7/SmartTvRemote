@@ -10,6 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { Button } from '@/components/button';
 import { Icon, type IconName } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -57,6 +58,7 @@ const keyNames: Partial<Record<RemoteKey, StringKey>> = {
   youtube: 'key.youtube',
   lastChannel: 'key.lastChannel',
   teletext: 'key.teletext',
+  guide: 'key.guide',
   disneyPlus: 'key.disneyPlus',
   tabii: 'key.tabii',
   portal: 'key.portal',
@@ -92,7 +94,7 @@ function targetLabel(target: CommandTarget, t: T, apps: AppsState): string {
 
 export default function RemoteScreen() {
   const { t } = useTranslation();
-  const { state, lastCommand, sendKey, apps } = useConnection();
+  const { state, lastCommand, sendKey, apps, connect, lastTv } = useConnection();
   const [numpadOpen, setNumpadOpen] = useState(false);
   const [page, setPage] = useState<'main' | 'more'>('main');
   const connected = state.status === 'connected';
@@ -127,7 +129,11 @@ export default function RemoteScreen() {
         ? t(state.searching ? 'connection.searching' : 'connection.connecting')
         : warning
           ? t('remote.notSent')
-          : t('remote.noTv.message');
+          : lastTv
+            ? `${t('connection.lastTv')}: ${lastTv.tv.name} · ${t('connection.notConnected')}`
+            : t('remote.noTv.message');
+  // Not connected but a last TV is known: offer Connect where the power button usually is.
+  const showConnect = !connected && state.status !== 'connecting' && lastTv !== null;
 
   return (
     <RemoteGuardContext.Provider value={{ connected, warn }}>
@@ -142,7 +148,9 @@ export default function RemoteScreen() {
             {statusText}
           </ThemedText>
         </View>
-        {SMART_CENTER_KEY_CODES.power !== undefined ? (
+        {showConnect && lastTv ? (
+          <Button label={t('connection.connect')} onPress={() => connect(lastTv.tv)} />
+        ) : SMART_CENTER_KEY_CODES.power !== undefined ? (
           <Pressable
             onPress={confirmPower}
             accessibilityRole="button"
@@ -188,14 +196,22 @@ export default function RemoteScreen() {
 
           {numpadOpen ? <Numpad onClose={() => setNumpadOpen(false)} /> : null}
 
-          {/* Media */}
+          {/* Media player (USB / apps): previous track, play, stop, next track — and mute */}
           <View style={styles.mediaRow}>
-            <Key k="play" style={styles.roundKey}>
-              <Icon name="play" />
-            </Key>
-            <Key k="stop" style={styles.roundKey}>
-              <Icon name="stop" />
-            </Key>
+            <View style={styles.mediaBar}>
+              <Key k="previous" style={styles.mediaKey}>
+                <Icon name="previous" />
+              </Key>
+              <Key k="play" style={styles.mediaKey}>
+                <Icon name="play" />
+              </Key>
+              <Key k="stop" style={styles.mediaKey}>
+                <Icon name="stop" />
+              </Key>
+              <Key k="next" style={styles.mediaKey}>
+                <Icon name="next" />
+              </Key>
+            </View>
             <Key k="mute" style={styles.roundKey}>
               <Icon name="mute" />
             </Key>
@@ -410,11 +426,10 @@ const MORE_KEYS: { k: RemoteKey; icon: IconName }[] = [
   { k: 'menu', icon: 'menu' },
   { k: 'source', icon: 'source' },
   { k: 'portal', icon: 'portal' },
-  { k: 'previous', icon: 'previous' },
-  { k: 'next', icon: 'next' },
+  { k: 'guide', icon: 'guide' },
 ];
 
-/** Second page: last channel, teletext, MENU, source, Web portal, previous / next. Apps opened by key (YouTube, Disney+, tabii) live in the Apps list. */
+/** Second page: last channel, teletext, MENU, source, Web portal, TV guide. Apps opened by key (YouTube, Disney+, tabii) live in the Apps list. */
 function MorePage() {
   const { t } = useTranslation();
   return (
@@ -749,8 +764,22 @@ const styles = StyleSheet.create({
   },
   mediaRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.four,
+    gap: Spacing.three,
+  },
+  mediaBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    padding: Spacing.one,
+    borderRadius: ROUND,
+    backgroundColor: Colors.backgroundElement,
+  },
+  mediaKey: {
+    width: ROUND - 8,
+    height: ROUND - 8,
+    borderRadius: (ROUND - 8) / 2,
   },
   roundKey: {
     width: ROUND + 8,
