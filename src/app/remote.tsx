@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Alert,
+  PanResponder,
   Pressable,
   StyleSheet,
   TextInput,
@@ -35,6 +36,8 @@ type RemoteGuard = { connected: boolean; warn: () => void };
 const RemoteGuardContext = createContext<RemoteGuard>({ connected: true, warn: () => {} });
 
 const WARNING_VISIBLE_MS = 2500;
+const SWIPE_START_PX = 24;
+const SWIPE_PAGE_PX = 60;
 
 const keyNames: Partial<Record<RemoteKey, StringKey>> = {
   up: 'key.up',
@@ -97,6 +100,24 @@ export default function RemoteScreen() {
   const { state, lastCommand, sendKey, apps, connect, lastTv } = useConnection();
   const [numpadOpen, setNumpadOpen] = useState(false);
   const [page, setPage] = useState<'main' | 'more'>('main');
+
+  // Swipe left / right on the keys to switch between Remote and More.
+  // Only clearly horizontal moves are taken over, so taps, holds and vertical scrolling still work.
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_, g) =>
+        Math.abs(g.dx) > SWIPE_START_PX && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+      onPanResponderRelease: (_, g) => {
+        if (Math.abs(g.dx) < SWIPE_PAGE_PX) return;
+        const next = g.dx < 0 ? 'more' : 'main';
+        setPage((current) => {
+          if (current !== next) repeatFeedback();
+          return next;
+        });
+      },
+      onPanResponderTerminationRequest: () => true,
+    }),
+  ).current;
   const connected = state.status === 'connected';
 
   // Highlighted for a moment when a key is pressed without a connection.
@@ -164,60 +185,62 @@ export default function RemoteScreen() {
 
       <PageSwitch page={page} onChange={setPage} />
 
-      {page === 'more' ? <MorePage /> : null}
+      <View {...swipe.panHandlers} style={styles.pages}>
+        {page === 'more' ? <MorePage /> : null}
 
-      {page === 'main' ? (
-        <>
-          <DPadPanel />
+        {page === 'main' ? (
+          <>
+            <DPadPanel />
 
-          {/* Back / 123 / Home / Exit */}
-          <View style={styles.utilityRow}>
-            <Key k="back" style={styles.utilityKey}>
-              <Icon name="back" />
-            </Key>
-            <Pressable
-              onPress={() => {
-                keyFeedback();
-                setNumpadOpen((open) => !open);
-              }}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: numpadOpen }}
-              accessibilityLabel={t('remote.numpad')}
-              style={({ pressed }) => [styles.numpadToggle, pressed && styles.pressed]}>
-              <ThemedText type="smallBold">123</ThemedText>
-            </Pressable>
-            <Key k="home" style={styles.utilityKey}>
-              <Icon name="home" />
-            </Key>
-            <Key k="exit" style={styles.utilityKey}>
-              <ThemedText type="smallBold">EXIT</ThemedText>
-            </Key>
-          </View>
-
-          {numpadOpen ? <Numpad onClose={() => setNumpadOpen(false)} /> : null}
-
-          {/* Media player (USB / apps): previous track, play, stop, next track — and mute */}
-          <View style={styles.mediaRow}>
-            <View style={styles.mediaBar}>
-              <Key k="previous" style={styles.mediaKey}>
-                <Icon name="previous" />
+            {/* Back / 123 / Home / Exit */}
+            <View style={styles.utilityRow}>
+              <Key k="back" style={styles.utilityKey}>
+                <Icon name="back" />
               </Key>
-              <Key k="play" style={styles.mediaKey}>
-                <Icon name="play" />
+              <Pressable
+                onPress={() => {
+                  keyFeedback();
+                  setNumpadOpen((open) => !open);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: numpadOpen }}
+                accessibilityLabel={t('remote.numpad')}
+                style={({ pressed }) => [styles.numpadToggle, pressed && styles.pressed]}>
+                <ThemedText type="smallBold">123</ThemedText>
+              </Pressable>
+              <Key k="home" style={styles.utilityKey}>
+                <Icon name="home" />
               </Key>
-              <Key k="stop" style={styles.mediaKey}>
-                <Icon name="stop" />
-              </Key>
-              <Key k="next" style={styles.mediaKey}>
-                <Icon name="next" />
+              <Key k="exit" style={styles.utilityKey}>
+                <ThemedText type="smallBold">EXIT</ThemedText>
               </Key>
             </View>
-            <Key k="mute" style={styles.roundKey}>
-              <Icon name="mute" />
-            </Key>
-          </View>
-        </>
-      ) : null}
+
+            {numpadOpen ? <Numpad onClose={() => setNumpadOpen(false)} /> : null}
+
+            {/* Media player (USB / apps): previous track, play, stop, next track — and mute */}
+            <View style={styles.mediaRow}>
+              <View style={styles.mediaBar}>
+                <Key k="previous" style={styles.mediaKey}>
+                  <Icon name="previous" />
+                </Key>
+                <Key k="play" style={styles.mediaKey}>
+                  <Icon name="play" />
+                </Key>
+                <Key k="stop" style={styles.mediaKey}>
+                  <Icon name="stop" />
+                </Key>
+                <Key k="next" style={styles.mediaKey}>
+                  <Icon name="next" />
+                </Key>
+              </View>
+              <Key k="mute" style={styles.roundKey}>
+                <Icon name="mute" />
+              </Key>
+            </View>
+          </>
+        ) : null}
+      </View>
 
       {/* Last command: lets the user verify each key during testing */}
       <View accessibilityLiveRegion="polite">
@@ -761,6 +784,9 @@ const styles = StyleSheet.create({
   },
   digitSpacer: {
     width: ROUND,
+  },
+  pages: {
+    gap: Spacing.three,
   },
   mediaRow: {
     flexDirection: 'row',

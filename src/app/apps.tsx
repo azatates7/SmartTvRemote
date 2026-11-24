@@ -74,9 +74,10 @@ export default function AppsScreen() {
               <AppBadge appId={app.id} label={app.label} />
               <View style={styles.info} accessible>
                 <ThemedText type="smallBold">{app.label}</ThemedText>
-                {app.state ? (
+                {/* Only DIAL apps report a state; show it only when the app is open on the TV. */}
+                {app.state === 'running' ? (
                   <ThemedText type="small" themeColor="textSecondary">
-                    {app.state === 'running' ? t('apps.state.running') : t('apps.state.stopped')}
+                    {t('apps.state.running')}
                   </ThemedText>
                 ) : null}
               </View>
