@@ -1,5 +1,7 @@
 {
   "ios": {
-    "NSLocalNetworkUsageDescription": "SmartTvRemote, aynı Wi-Fi ağındaki TV'leri bulmak ve kontrol etmek için yerel ağınızı kullanır."
+    "NSLocalNetworkUsageDescription": "TV Kumanda, aynı Wi-Fi ağındaki TV'leri bulmak ve kontrol etmek için yerel ağınızı kullanır.",
+    "NSMicrophoneUsageDescription": "Sesli komutlar için mikrofon kullanılır. Konuşma cihaz üzerinde tanınır.",
+    "NSSpeechRecognitionUsageDescription": "Sesli komutlar cihaz üzerinde tanınır."
   }
 }

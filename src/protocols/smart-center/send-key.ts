@@ -67,10 +67,9 @@ export function buildKeyBody(code: number): string {
 export type SendKeyResult = { httpStatus: number; elapsedMs: number };
 
 /**
- * Code tester (TEMPORARY, like diagnostics): lets the user try unknown key codes on their TV.
+ * Code tester (kept as a feature for other TV models): lets the user try unknown key codes.
  * Any 4-digit code (1000–9999): codes seen so far are 1000–1082, but higher ones may exist.
- * Power (1012) is excluded: it can turn the TV off, and the remote already has a power button
- * with a confirmation.
+ * Power (1012) is excluded: it can turn the TV off, and the remote already has a power button with a confirmation.
  */
 export const TEST_CODE_MIN = 1000;
 export const TEST_CODE_MAX = 9999;

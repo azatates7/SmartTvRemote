@@ -68,7 +68,7 @@ type ConnectionContextValue = {
   disconnect: () => void;
   /** `skipIfBusy`: drop the press if the TV still has requests queued (used for held-key repeat). */
   sendKey: (key: RemoteKey, options?: { skipIfBusy?: boolean }) => void;
-  /** Code tester (temporary): sends a raw code; only codes allowed by `isTestableCode`. */
+  /** Code tester: sends a raw code; only codes allowed by `isTestableCode`. */
   sendTestCode: (code: number) => void;
   lastCommand: LastCommand | null;
   apps: AppsState;

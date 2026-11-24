@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   Alert,
   PanResponder,
@@ -18,6 +27,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, MaxContentWidth, MinTouchTarget, Radius, Spacing } from '@/constants/theme';
 import type { RemoteKey, TvErrorCode } from '@/domain/tv';
+import { parseVoiceCommand, type VoiceCommand } from '@/domain/voice-commands';
 import { useTranslation, type StringKey } from '@/i18n';
 import {
   isTestableCode,
@@ -27,6 +37,7 @@ import {
 } from '@/protocols/smart-center/send-key';
 import { useConnection, type AppsState, type CommandTarget } from '@/services/connection-context';
 import { keyFeedback, repeatFeedback, warningFeedback } from '@/services/feedback';
+import { useVoiceRecognition } from '@/services/voice-recognition';
 
 /**
  * Keys stay visible without a connection, so the layout does not jump.
@@ -183,6 +194,8 @@ export default function RemoteScreen() {
         ) : null}
       </View>
 
+      <VoiceBar onPower={confirmPower} />
+
       <PageSwitch page={page} onChange={setPage} />
 
       <View {...swipe.panHandlers} style={styles.pages}>
@@ -261,6 +274,109 @@ export default function RemoteScreen() {
 
     </Screen>
     </RemoteGuardContext.Provider>
+  );
+}
+
+/**
+ * Voice commands (Turkish / English, following the app language): tap the mic, say e.g.
+ * "sesi 3 artır", "bir sonraki kanal", "youtube'u aç". Recognition runs on the device.
+ */
+function VoiceBar({ onPower }: { onPower: () => void }) {
+  const { t, language } = useTranslation();
+  const { sendKey, launchApp, apps, lastTv } = useConnection();
+  const { connected, warn } = useContext(RemoteGuardContext);
+  const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null);
+
+  // Apps that can be named: the connected TV's, or the last TV's while disconnected.
+  const voiceApps = useMemo(
+    () =>
+      apps.status === 'ready'
+        ? apps.apps.filter((a) => a.installed).map(({ id, label }) => ({ id, label }))
+        : (lastTv?.apps ?? []),
+    [apps, lastTv],
+  );
+  const contextualStrings = useMemo(() => voiceApps.map((a) => a.label), [voiceApps]);
+
+  const describe = (command: VoiceCommand): string => {
+    switch (command.type) {
+      case 'key':
+        return command.count > 1 ? `${keyLabel(command.key, t)} ×${command.count}` : keyLabel(command.key, t);
+      case 'channel':
+        return `${t('voice.channel')} ${command.number}`;
+      case 'app':
+        return voiceApps.find((a) => a.id === command.appId)?.label ?? command.appId;
+      case 'power':
+        return t('key.power');
+    }
+  };
+
+  const run = (text: string) => {
+    const command = parseVoiceCommand(text, voiceApps);
+    if (!command) {
+      warningFeedback();
+      setFeedback({ text: `${t('voice.notUnderstood')} “${text}”`, error: true });
+      return;
+    }
+    if (!connected) {
+      warn();
+      setFeedback({ text: `“${text}” → ${describe(command)} · ${t('connection.notConnected')}`, error: true });
+      return;
+    }
+    keyFeedback();
+    setFeedback({ text: `“${text}” → ${describe(command)}`, error: false });
+    switch (command.type) {
+      case 'key':
+        // Requests go through the connection queue one by one, like pressing the key n times.
+        for (let i = 0; i < command.count; i++) sendKey(command.key);
+        break;
+      case 'channel':
+        for (const digit of String(command.number)) sendKey(`digit${digit}` as RemoteKey);
+        break;
+      case 'app':
+        launchApp(command.appId);
+        break;
+      case 'power':
+        onPower(); // asks for confirmation, like the power button
+        break;
+    }
+  };
+
+  const voice = useVoiceRecognition({ language, contextualStrings, onFinal: run });
+  const listening = voice.status === 'listening';
+
+  const line = listening
+    ? voice.transcript || t('voice.listening')
+    : voice.error
+      ? t(voice.error)
+      : (feedback?.text ?? t('voice.hint'));
+  const lineIsError = !listening && (voice.error !== null || (feedback?.error ?? false));
+
+  return (
+    <View style={styles.voiceBar}>
+      <Pressable
+        onPress={() => {
+          keyFeedback();
+          if (listening) voice.stop();
+          else {
+            setFeedback(null);
+            voice.start();
+          }
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={listening ? t('voice.stop') : t('voice.start')}
+        accessibilityState={{ selected: listening }}
+        style={({ pressed }) => [styles.micButton, listening && styles.micListening, pressed && styles.pressed]}>
+        <Icon name="mic" color={listening ? Colors.background : Colors.text} />
+      </Pressable>
+      <ThemedText
+        type="small"
+        themeColor={lineIsError ? undefined : 'textSecondary'}
+        style={[styles.voiceText, lineIsError && styles.error]}
+        numberOfLines={2}
+        accessibilityLiveRegion="polite">
+        {line}
+      </ThemedText>
+    </View>
   );
 }
 
@@ -473,8 +589,8 @@ function MorePage() {
 }
 
 /**
- * TEMPORARY code tester: send any code 1000–1099 (except power) and watch what the TV does.
- * Used to find INFO, GUIDE and color key codes; remove together with the diagnostics section.
+ * Code tester (kept as a feature): send any code 1000–9999 (except power) and watch what the TV does.
+ * Lets users of other Smart Center TVs find keys that the remote does not have yet.
  */
 function CodeTester() {
   const { t } = useTranslation();
@@ -784,6 +900,26 @@ const styles = StyleSheet.create({
   },
   digitSpacer: {
     width: ROUND,
+  },
+  voiceBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.one,
+  },
+  micButton: {
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    borderRadius: MinTouchTarget / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.backgroundElement,
+  },
+  micListening: {
+    backgroundColor: Colors.accent,
+  },
+  voiceText: {
+    flex: 1,
   },
   pages: {
     gap: Spacing.three,

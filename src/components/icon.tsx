@@ -17,6 +17,7 @@ const ICONS = {
   power: { ios: 'power', android: 'power_settings_new' },
   close: { ios: 'xmark', android: 'close' },
   check: { ios: 'checkmark', android: 'check' },
+  mic: { ios: 'mic.fill', android: 'mic' },
   apps: { ios: 'square.grid.2x2', android: 'apps' },
   search: { ios: 'magnifyingglass', android: 'search' },
   menu: { ios: 'line.3.horizontal', android: 'menu' },

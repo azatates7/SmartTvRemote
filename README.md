@@ -1,4 +1,4 @@
-# SmartTvRemote
+# TV Kumanda – Smart Center (SmartTvRemote)
 
 Android (and later iOS) remote for **Smart Center–compatible TVs** (some Toshiba / Vestel models), built with
 React Native, Expo SDK 58 and Expo Router. Everything works on the local network: no account, no server,
@@ -26,8 +26,10 @@ Google Play preparation: [`docs/play-store-plan.md`](./docs/play-store-plan.md).
 | More page | Last channel, teletext, menu, source, Web, TV guide |
 | Apps | Netflix and Amazon Prime Video via DIAL; YouTube, Disney+ and tabii via their remote keys; search to add other DIAL apps (min. 3 characters) |
 | Offline view | Without a connection, Remote and Apps still show the last TV and its apps, with a Connect button; keys show a warning instead of sending |
+| Voice commands | Mic on the Remote screen: "sesi 3 artır", "bir sonraki kanal", "kanal 7", "YouTube'u aç", "volume up", "open Netflix"… in the app language (TR/EN). On-device recognition only, Android 13+ |
 | Language | Device language (default), Turkish or English — Settings > Language |
-| Temporary tools | Settings > Diagnostics and Remote > More > Try a code (1000–9999, power blocked). Removed before release |
+| Try a code | Remote > More: send any key code 1000–9999 (power blocked) to find keys on other Smart Center models |
+| Temporary tool | Settings > Diagnostics (read-only protocol report). Removed before release |
 
 Protocol details and sources: [`docs/protocol-notes.md`](./docs/protocol-notes.md).
 
