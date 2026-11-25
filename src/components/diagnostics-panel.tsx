@@ -1,7 +1,8 @@
 /**
- * TEMPORARY: shows the read-only TV diagnostics report in Settings.
- * To remove: delete this file, `protocols/smart-center/diagnostics.ts`, the `diag.*` strings and
- * the <DiagnosticsPanel /> section in `app/settings.tsx`.
+ * GEÇİCİ: Ayarlar ekranında TV tanılama raporunu gösterir.
+ * Rapor yalnızca okuma (GET) istekleriyle hazırlanır ve TV'de hiçbir şeyi değiştirmez.
+ * Kullanıcı raporu telefonun paylaşım menüsüyle geliştiriciye gönderebilir.
+ * Kaldırmak için bu dosyayı, `protocols/smart-center/diagnostics.ts` dosyasını, `diag.*` metinlerini ve `app/settings.tsx` içindeki <DiagnosticsPanel /> bölümünü silmek yeterlidir.
  */
 
 import { useEffect, useRef, useState } from 'react';

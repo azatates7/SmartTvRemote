@@ -20,15 +20,18 @@ type ScanState =
   | { kind: 'done' }
   | { kind: 'failed'; code: TvErrorCode };
 
-/** Finds TVs on the phone's Wi-Fi (same /24 network) and lets the user save them with one tap. */
+/**
+ * Telefonun bağlı olduğu Wi-Fi ağında (aynı /24 alt ağ) Smart Center uyumlu TV'leri arar ve kullanıcının bulunan TV'yi tek dokunuşla kaydetmesini sağlar.
+ * Bulunan bir TV zaten kayıtlıysa ve IP adresi değişmişse, yeni TV eklemek yerine kayıtlı TV'nin adresini günceller.
+ */
 export function DiscoverTvPanel() {
   const { t } = useTranslation();
   const { tvs, getTvs, updateTv } = useSavedTvs();
   const [state, setState] = useState<ScanState>({ kind: 'idle' });
   const [found, setFound] = useState<DiscoveredSmartCenter[]>([]);
-  /** IP of the found TV the user is currently naming. */
+  /** Kullanıcının o anda ad verdiği, taramada bulunmuş TV'nin IP adresi. */
   const [namingIp, setNamingIp] = useState<string | null>(null);
-  /** Found IP → name of the saved TV whose address was updated to it. */
+  /** Taramada bulunan IP adresinden, adresi bu IP'ye güncellenen kayıtlı TV'nin adına giden eşleme; ekranda "Adres güncellendi" mesajı için kullanılır. */
   const [relocated, setRelocated] = useState<Record<string, string>>({});
   const abortRef = useRef<AbortController | null>(null);
 
@@ -48,7 +51,7 @@ export function DiscoverTvPanel() {
         onProgress: (progress) => setState({ kind: 'scanning', progress }),
         onFound: (tv) => {
           setFound((prev) => [...prev, tv]);
-          // Same TV (identity match) at a new address: update the saved TV instead of adding a new one.
+          // Kimliği (UDN) kayıtlı bir TV ile aynı olan TV yeni bir adreste bulunduysa, yeni kayıt açmak yerine kayıtlı TV'nin adresini güncelliyoruz.
           const deviceId = tv.identity?.deviceId;
           const saved = deviceId ? getTvs().find((s) => s.deviceId === deviceId) : undefined;
           if (saved && saved.ipAddress !== tv.ipAddress) {
@@ -67,8 +70,8 @@ export function DiscoverTvPanel() {
   const stop = () => abortRef.current?.abort();
 
   const scanDone = state.kind === 'done';
-  // Saved TVs without identity that did not answer at their saved address in this scan:
-  // a newly found TV may be one of them with a new IP (the user decides).
+  // Kimliği kayıtlı olmayan ve bu taramada eski adresinde cevap vermeyen kayıtlı TV'leri buluyoruz.
+  // Yeni bulunan bir TV, IP adresi değişmiş bu TV'lerden biri olabilir; bunu kullanıcıya soruyoruz.
   const missingSaved = scanDone
     ? tvs.filter((s) => !s.deviceId && !found.some((f) => f.ipAddress === s.ipAddress))
     : [];
@@ -102,8 +105,8 @@ export function DiscoverTvPanel() {
 
       {found.map((tv) => {
         const deviceId = tv.identity?.deviceId;
-        // Saved = same identity, or same IP when identity cannot tell them apart
-        // (a saved TV with a different identity at this IP has a stale address: not this TV).
+        // Bir TV'yi kayıtlı saymak için önce kimliğe bakıyoruz; kimlik yoksa ve ayırt edemiyorsak aynı IP adresi yeterli oluyor.
+        // Bu IP'de kayıtlı ama kimliği farklı bir TV varsa o kaydın adresi eskimiştir ve bu TV ile aynı cihaz değildir.
         const saved = tvs.find(
           (s) =>
             (deviceId && s.deviceId === deviceId) ||

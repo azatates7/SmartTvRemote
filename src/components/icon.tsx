@@ -3,7 +3,7 @@ import type { ColorValue } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 
-/** App icon names → SF Symbols (iOS) and Material Symbols (Android). Generic glyphs only, no brand logos. */
+/** Uygulamada kullanılan ikon adlarını iOS'taki SF Symbols ve Android'deki Material Symbols adlarına eşler; yalnızca genel simgeler kullanılır, marka logosu yoktur. */
 const ICONS = {
   up: { ios: 'chevron.up', android: 'keyboard_arrow_up' },
   down: { ios: 'chevron.down', android: 'keyboard_arrow_down' },
@@ -42,6 +42,6 @@ export function Icon({
   color?: ColorValue;
 }) {
   const { ios, android } = ICONS[name];
-  // expo-symbols reads `android` on Android and `web` on web; both use Material Symbols.
+  // expo-symbols Android'de `android`, web önizlemesinde `web` alanını okur; ikisi de Material Symbols adlarını kullandığı için aynı değeri veriyoruz.
   return <SymbolView name={{ ios, android, web: android }} size={size} tintColor={color} />;
 }

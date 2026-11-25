@@ -16,7 +16,11 @@ const errorKeys: Partial<Record<TvErrorCode, StringKey>> = {
   networkUnavailable: 'discover.error.noWifi',
 };
 
-/** Saved TV on Home: connect / disconnect. Only one TV is connected at a time. */
+/**
+ * Ana Sayfa'da kayıtlı bir TV'yi kart olarak gösterir: ad, model, IP adresi ve bağlantı durumu.
+ * Kart üzerinden TV'ye bağlanılır, bağlantı kesilir ya da hata sonrası tekrar denenir.
+ * Aynı anda yalnızca bir TV'ye bağlı olunabilir; başka bir TV'ye bağlanmak öncekinin bağlantısını kapatır.
+ */
 export function TvCard({ tv }: { tv: SavedTv }) {
   const { t } = useTranslation();
   const { state, connect, disconnect } = useConnection();

@@ -9,6 +9,11 @@ export type ThemedViewProps = ViewProps & {
   type?: ThemeColor;
 };
 
+/**
+ * Arka planını temadan alan görünüm bileşenidir.
+ * `type` temadaki arka plan rengini seçer (ör. kartlar için `backgroundElement`); verilmezse ekran arka planı kullanılır.
+ * `lightColor` ve `darkColor` Expo şablonundan kalmadır ve uygulama tek (koyu) tema kullandığı için dikkate alınmaz.
+ */
 export function ThemedView({ style, lightColor, darkColor, type, ...otherProps }: ThemedViewProps) {
   const theme = useTheme();
 

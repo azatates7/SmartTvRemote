@@ -10,7 +10,11 @@ type ScreenProps = {
   children: ReactNode;
 };
 
-/** Common screen frame: safe area, scrollable content and an accessible page title. */
+/**
+ * Tüm ekranların ortak çerçevesidir.
+ * Çentik ve sistem çubuklarına göre güvenli alanı bırakır, içeriği kaydırılabilir yapar ve ekran okuyucular için sayfa başlığını işaretler.
+ * Klavye açıkken bir düğmeye dokunulursa dokunuş klavyeyi kapatmakla harcanmaz, düğme ilk dokunuşta çalışır.
+ */
 export function Screen({ title, children }: ScreenProps) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>

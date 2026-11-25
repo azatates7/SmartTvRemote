@@ -3,11 +3,13 @@ import { Pressable, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, MinTouchTarget, Radius, Spacing } from '@/constants/theme';
 
+/** Uygulamanın standart düğmesi; dokunma alanı en az 48 px olacak şekilde boyutlanır. */
 type ButtonProps = {
   label: string;
   onPress: () => void;
+  /** `primary` turuncu dolgulu ana eylemdir, `secondary` gri zeminli ikincil eylemdir, `danger` silme gibi geri alınamayan eylemler için kırmızı yazılıdır. */
   variant?: 'primary' | 'secondary' | 'danger';
-  /** Overrides the spoken label, e.g. "Remove Living room TV". */
+  /** Ekran okuyucunun okuyacağı metni değiştirir, örneğin yalnızca "Kaldır" yerine "Salon TV'sini kaldır". */
   accessibilityLabel?: string;
 };
 

@@ -6,8 +6,10 @@ import { Colors } from '@/constants/theme';
 import type { DialAppId } from '@/protocols/smart-center/dial-apps';
 
 /**
- * Icon for a TV app. Shows the official logo if one was added in `constants/app-logos.ts`,
- * otherwise a filled letter badge (e.g. "Y" for YouTube) in the app's own accent color.
+ * TV uygulaması için ikon gösterir.
+ * `constants/app-logos.ts` dosyasına o uygulama için bir logo eklendiyse logoyu kullanır.
+ * Logo yoksa uygulama adının ilk harfini turuncu (tema vurgu rengi) dolgulu bir rozet içinde gösterir, örneğin YouTube için "Y".
+ * Ekran okuyucular rozeti atlar, çünkü uygulamanın adı hemen yanında zaten okunur.
  */
 export function AppBadge({ appId, label, size = 40 }: { appId: DialAppId; label: string; size?: number }) {
   const radius = size * 0.28;

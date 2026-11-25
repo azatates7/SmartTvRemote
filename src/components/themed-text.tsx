@@ -8,6 +8,10 @@ export type ThemedTextProps = TextProps & {
   themeColor?: ThemeColor;
 };
 
+/**
+ * Tema renklerini kullanan metin bileşenidir.
+ * `type` yazı boyutunu ve kalınlığını (başlık, küçük metin, bağlantı gibi), `themeColor` ise temadaki rengi seçer; varsayılan renk ana metin rengidir.
+ */
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
 

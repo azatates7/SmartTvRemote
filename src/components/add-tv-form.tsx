@@ -17,13 +17,16 @@ const errorKeys = {
 
 type AddTvFormProps = {
   onDone: () => void;
-  /** IP found by discovery: shown read-only, only the name is asked. */
+  /** Ağ taramasında bulunan IP adresidir; formda değiştirilemez olarak gösterilir ve kullanıcıdan yalnızca TV için bir ad istenir. */
   fixedIp?: string;
-  /** Identity read during discovery; saved with the TV so IP changes are recognised. */
+  /** Tarama sırasında TV'den okunan kimlik bilgisidir (UDN ve model); TV ile birlikte kaydedilir, böylece TV'nin IP adresi değişse bile aynı TV olduğu anlaşılır. */
   identity?: DeviceIdentity | null;
 };
 
-/** Saves a TV by name + private IP. Saving makes no network request. */
+/**
+ * Bir TV'yi adı ve yerel (özel) IP adresiyle kaydeder.
+ * Kaydetme işlemi ağa hiçbir istek göndermez; bağlantı daha sonra Bağlan düğmesiyle kurulur.
+ */
 export function AddTvForm({ onDone, fixedIp, identity }: AddTvFormProps) {
   const { t } = useTranslation();
   const { addTv } = useSavedTvs();

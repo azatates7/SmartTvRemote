@@ -4,8 +4,9 @@ import { Colors } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 
 /**
- * Five-tab information architecture (AGENTS.md Phase 1).
- * Icons: SF Symbols on iOS, Material icons on Android — no vendor artwork.
+ * Uygulamanın alt sekme çubuğudur: Ana Sayfa, Rehber, Kumanda, Uygulamalar ve Ayarlar (AGENTS.md, 1. aşama).
+ * İkonlar iOS'ta SF Symbols, Android'de Material simgeleridir; hiçbir TV markasının görseli kullanılmaz.
+ * Sekme adları uygulama diline göre (Türkçe veya İngilizce) gösterilir.
  */
 export default function AppTabs() {
   const { t } = useTranslation();

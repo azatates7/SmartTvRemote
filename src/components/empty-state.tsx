@@ -9,7 +9,7 @@ type EmptyStateProps = {
   message: string;
 };
 
-/** Explains why a feature has no content or is unavailable (empty, unsupported, not connected). */
+/** Bir ekranın neden boş olduğunu ya da bir özelliğin neden kullanılamadığını (içerik yok, desteklenmiyor, TV bağlı değil) başlık ve açıklamayla anlatır. */
 export function EmptyState({ title, message }: EmptyStateProps) {
   return (
     <ThemedView
