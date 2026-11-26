@@ -40,7 +40,7 @@ type DiscoverOptions = {
 };
 
 /** Returns the phone's private IPv4 on Wi-Fi/Ethernet, or throws `networkUnavailable`. */
-async function getPhoneIpOnLan(): Promise<string> {
+export async function getPhoneIpOnLan(): Promise<string> {
   const state = await Network.getNetworkStateAsync();
   const onLan =
     state.isConnected &&

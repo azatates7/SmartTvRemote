@@ -8,6 +8,7 @@ import { Icon } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { WakeDetails } from '@/components/tv-card';
 import { Colors, MinTouchTarget, Radius, Spacing } from '@/constants/theme';
 import type { TvErrorCode } from '@/domain/tv';
 import { useTranslation, type StringKey } from '@/i18n';
@@ -30,6 +31,7 @@ const errorKeys: Partial<Record<TvErrorCode, StringKey>> = {
   timeout: 'remote.error.timeout',
   unreachable: 'remote.error.unreachable',
   unsupported: 'apps.launchRefused',
+  wakeFailed: 'wake.error.failed',
 };
 
 const addResultKeys: Record<AddAppResult, StringKey> = {
@@ -147,7 +149,7 @@ export default function AppsScreen() {
  */
 function OfflineApps() {
   const { t } = useTranslation();
-  const { state, connect, lastTv } = useConnection();
+  const { state, connect, lastTv, wake, canWake } = useConnection();
   const [warning, setWarning] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -169,7 +171,7 @@ function OfflineApps() {
 
   const status =
     state.status === 'connecting'
-      ? t(state.searching ? 'connection.searching' : 'connection.connecting')
+      ? t(state.waking ? 'connection.waking' : state.searching ? 'connection.searching' : 'connection.connecting')
       : state.status === 'error'
         ? t(errorKeys[state.code] ?? 'check.error.unknown')
         : t('connection.notConnected');
@@ -189,9 +191,18 @@ function OfflineApps() {
             accessibilityLiveRegion="polite">
             {status}
           </ThemedText>
+          {state.status === 'error' && state.wake ? (
+            <WakeDetails report={state.wake} ipAddress={lastTv.tv.ipAddress} />
+          ) : null}
         </View>
         {state.status !== 'connecting' ? (
-          <Button label={t('connection.connect')} onPress={() => connect(lastTv.tv)} />
+          <View style={styles.lastTvActions}>
+            <Button label={t('connection.connect')} onPress={() => connect(lastTv.tv)} />
+            {/* TV kapalı olabilir: bağlantı yokken son TV için açmayı denemeyi de sunuyoruz (TV cevap veriyorsa gösterilmez). */}
+            {canWake(lastTv.tv) && !(state.status === 'error' && state.code === 'unsupported') ? (
+              <Button label={t('wake.button')} variant="secondary" onPress={() => wake(lastTv.tv)} />
+            ) : null}
+          </View>
         ) : null}
       </ThemedView>
 
@@ -360,6 +371,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     paddingVertical: Spacing.three,
+  },
+  lastTvActions: {
+    gap: Spacing.two,
   },
   lastTvCard: {
     flexDirection: 'row',

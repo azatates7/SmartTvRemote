@@ -117,6 +117,8 @@ export type TvErrorCode =
   | 'unreachable'
   | 'timeout'
   | 'unsupported'
+  /** "TV'yi aç" sonrası TV belirlenen süre içinde ağda görünmedi. */
+  | 'wakeFailed'
   | 'cancelled'
   | 'unknown';
 

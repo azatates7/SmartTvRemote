@@ -166,3 +166,12 @@ or were not tried.
 
 Disney+ and tabii have no DIAL entry, so the app cannot check whether they are installed; they are
 always listed and opened with their key.
+
+#### TV-001 — Wake-on-LAN (added 2026-11-25, not yet tested)
+
+```text
+MAC from UDN:     uuid:00000000-0000-0000-0000-909877e434b0 -> 90:98:77:e4:34:b0 (to be compared with the TV menu)
+Packet:           magic packet, UDP ports 9 and 7, to <subnet>.255, 255.255.255.255 and the last known TV IP, 3 times
+TV setting:       "Wake on WLAN/LAN" (name varies) must be on
+Result:           pending
+```

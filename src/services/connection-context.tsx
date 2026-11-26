@@ -9,7 +9,9 @@ import {
   type ReactNode,
 } from 'react';
 
+import { parsePrivateIPv4 } from '@/domain/ip-address';
 import { TvError, type RemoteKey, type SavedTv, type TvErrorCode } from '@/domain/tv';
+import { macFromDeviceId, subnetBroadcast } from '@/domain/wake';
 import { fetchDeviceIdentity } from '@/protocols/smart-center/device-info';
 import {
   DIAL_APPS,
@@ -20,7 +22,7 @@ import {
   type DialAppId,
   type DialAppStatus,
 } from '@/protocols/smart-center/dial-apps';
-import { discoverSmartCenterTvs } from '@/protocols/smart-center/discover';
+import { discoverSmartCenterTvs, getPhoneIpOnLan } from '@/protocols/smart-center/discover';
 import {
   isSmartCenterRunning,
   probeSmartCenter,
@@ -28,6 +30,7 @@ import {
 } from '@/protocols/smart-center/probe';
 import { sendSmartCenterKey, sendSmartCenterTestCode, type SendKeyResult } from '@/protocols/smart-center/send-key';
 
+import { isWakeOnLanAvailable, sendMagicPacket } from '../../modules/wake-on-lan';
 import { loadCustomApps, writeCustomApps } from './custom-apps-storage';
 import { loadLastTvApps, saveLastTvApps, type LastTvApps } from './last-tv-apps-storage';
 import { loadLastTvId, saveLastTvId } from './last-tv-storage';
@@ -40,9 +43,26 @@ import { useSavedTvs } from './saved-tvs-context';
 export type ConnectionState =
   | { status: 'disconnected' }
   /** `searching`: the TV did not answer at its saved address; looking for it on the network by identity. */
-  | { status: 'connecting'; tv: SavedTv; searching?: boolean }
+  | { status: 'connecting'; tv: SavedTv; searching?: boolean; waking?: boolean }
   | { status: 'connected'; tv: SavedTv; probe: SmartCenterProbeResult }
-  | { status: 'error'; tv: SavedTv; code: TvErrorCode };
+  | { status: 'error'; tv: SavedTv; code: TvErrorCode; wake?: WakeReport };
+
+/**
+ * "TV'yi aç" denemesinin ayrıntıları; hata olursa kullanıcıya hangi adımda takıldığını göstermek için tutulur.
+ * `failedStep`: `network` telefon Wi-Fi'da değil, `send` paket gönderilemedi, `notFound` paket gitti ama TV ağda görünmedi.
+ */
+export type WakeReport = {
+  mac: string;
+  /** Paketin gönderildiği adresler (ağ yayını, genel yayın, TV'nin son IP adresi). */
+  targets: string[];
+  /** Tüm adreslere kaç tur paket gönderildiği. */
+  rounds: number;
+  /** TV'nin eski adresinde Smart Center'ın açılması için kaç saniye beklendiği. */
+  waitedSeconds: number;
+  failedStep?: 'network' | 'send' | 'notFound';
+  /** Yerel modülden gelen hata mesajı (yalnızca `send` adımında). */
+  message?: string;
+};
 
 export type CommandTarget =
   | { type: 'key'; key: RemoteKey }
@@ -64,8 +84,12 @@ export type AddAppResult = 'added' | 'alreadyAdded' | 'notFound' | 'failed';
 
 type ConnectionContextValue = {
   state: ConnectionState;
-  connect: (tv: SavedTv) => Promise<void>;
+  connect: (tv: SavedTv, options?: ConnectOptions) => Promise<void>;
   disconnect: () => void;
+  /** TV kapalıyken (bekleme modunda) Wake-on-LAN ile açıp bağlanır; yalnızca `canWake(tv)` true ise kullanılmalı. */
+  wake: (tv: SavedTv) => Promise<void>;
+  /** Bu TV bu telefondan açılabilir mi: Android'de yerel modül var ve TV'nin kimliğinden MAC adresi okunabiliyor. */
+  canWake: (tv: SavedTv) => boolean;
   /** `skipIfBusy`: drop the press if the TV still has requests queued (used for held-key repeat). */
   sendKey: (key: RemoteKey, options?: { skipIfBusy?: boolean }) => void;
   /** Code tester: sends a raw code; only codes allowed by `isTestableCode`. */
@@ -89,6 +113,35 @@ type ConnectionContextValue = {
 const ConnectionContext = createContext<ConnectionContextValue | null>(null);
 
 const toCode = (error: unknown): TvErrorCode => (error instanceof TvError ? error.code : 'unknown');
+
+/** `connect` seçenekleri; "TV'yi aç" akışı bağlantı başarısız olursa kendi hata kodunu ve ayrıntılarını göstermek için kullanır. */
+export type ConnectOptions = { failureCode?: TvErrorCode; wakeReport?: WakeReport };
+
+/** Sihirli paket kaç kez ve hangi aralıkla gönderilir; Wi-Fi ile uyandırmada tek paket kaçabildiği için birkaç kez gönderiyoruz. */
+const WAKE_PACKET_REPEATS = 3;
+const WAKE_PACKET_GAP_MS = 1000;
+/** TV'nin açılıp Smart Center'ı başlatması için beklenen en uzun süre ve bu sürede TV'nin kaç saniyede bir yoklandığı. */
+const WAKE_TIMEOUT_MS = 40_000;
+const WAKE_POLL_MS = 3000;
+/** TV cevap verip Smart Center henüz hazır değilse kaç kez ve hangi aralıkla yeniden denendiği (toplam yaklaşık 8 sn). */
+const NOT_READY_RETRIES = 4;
+const NOT_READY_DELAY_MS = 2000;
+
+/** Belirtilen süre kadar bekler; işlem iptal edilirse `cancelled` hatasıyla hemen biter. */
+function delay(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(new TvError('cancelled'));
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(new TvError('cancelled'));
+      },
+      { once: true },
+    );
+  });
+}
 
 export function ConnectionProvider({ children }: { children: ReactNode }) {
   const { tvs, updateTv, status: savedTvsStatus } = useSavedTvs();
@@ -121,7 +174,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     setApps({ status: 'idle' });
   }, []);
 
-  const connect = useCallback(async (tv: SavedTv) => {
+  const connect = useCallback(async (tv: SavedTv, options?: ConnectOptions) => {
     connectAbortRef.current?.abort();
     const controller = new AbortController();
     connectAbortRef.current = controller;
@@ -144,17 +197,22 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     };
 
     try {
-      const probe = await probeSmartCenter({ ipAddress: tv.ipAddress, signal });
+      let probe = await probeSmartCenter({ ipAddress: tv.ipAddress, signal });
+      // TV yeni açıldıysa ağa bağlanmış ama Smart Center servisi henüz başlamamış olabilir; hemen hata vermek yerine birkaç kez yeniden deniyoruz.
+      for (let i = 0; i < NOT_READY_RETRIES && !isSmartCenterRunning(probe); i++) {
+        await delay(NOT_READY_DELAY_MS, signal);
+        probe = await probeSmartCenter({ ipAddress: tv.ipAddress, signal });
+      }
       if (signal.aborted) return;
       if (isSmartCenterRunning(probe)) await markConnected(tv, probe);
-      else setState({ status: 'error', tv, code: 'unsupported' });
+      else setState({ status: 'error', tv, code: 'unsupported', wake: options?.wakeReport });
       return;
     } catch (error) {
       const code = toCode(error);
       if (code === 'cancelled') return;
       // Wrong / changed address and the TV has a known identity: look for it on the network.
       if (!tv.deviceId || (code !== 'unreachable' && code !== 'timeout')) {
-        setState({ status: 'error', tv, code });
+        setState({ status: 'error', tv, code, wake: options?.wakeReport });
         return;
       }
     }
@@ -165,16 +223,95 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       if (signal.aborted) return;
       const match = found.find((f) => f.identity?.deviceId === tv.deviceId);
       if (!match) {
-        setState({ status: 'error', tv, code: 'unreachable' });
+        setState({
+          status: 'error',
+          tv,
+          code: options?.failureCode ?? 'unreachable',
+          wake: options?.wakeReport && { ...options.wakeReport, failedStep: 'notFound' },
+        });
         return;
       }
       const moved = updateTv(tv.id, { ipAddress: match.ipAddress }) ?? { ...tv, ipAddress: match.ipAddress };
       await markConnected(moved, match.probe);
     } catch (error) {
       const code = toCode(error);
-      if (code !== 'cancelled') setState({ status: 'error', tv, code: code === 'unknown' ? 'unreachable' : code });
+      if (code !== 'cancelled') {
+        setState({ status: 'error', tv, code: code === 'unknown' ? 'unreachable' : code, wake: options?.wakeReport });
+      }
     }
   }, [updateTv]);
+
+  const canWake = useCallback((tv: SavedTv) => isWakeOnLanAvailable && macFromDeviceId(tv.deviceId) !== null, []);
+
+  /**
+   * TV'yi Wake-on-LAN ile açar ve ardından bağlanır.
+   * Sihirli paket telefonun ağının yayın adresine, genel yayın adresine ve TV'nin son bilinen IP adresine birkaç kez gönderilir, çünkü Wi-Fi ile uyandırmada ilk paket kaçabilir.
+   * Sonra TV'nin eski adresinde Smart Center açılana kadar en fazla WAKE_TIMEOUT_MS boyunca beklenir; açılınca normal bağlantı akışı çalışır.
+   * Süre dolarsa TV'nin IP adresi değişmiş olabileceği için ağ kimlikle bir kez taranır; yine bulunamazsa hata `wakeFailed` olur.
+   */
+  const wake = useCallback(
+    async (tv: SavedTv) => {
+      const mac = macFromDeviceId(tv.deviceId);
+      if (!mac || !isWakeOnLanAvailable) return;
+      connectAbortRef.current?.abort();
+      const controller = new AbortController();
+      connectAbortRef.current = controller;
+      const { signal } = controller;
+      setState({ status: 'connecting', tv, waking: true });
+      setLastCommand(null);
+      setApps({ status: 'idle' });
+
+      const report: WakeReport = { mac, targets: [], rounds: 0, waitedSeconds: 0 };
+      const fail = (code: TvErrorCode, step: WakeReport['failedStep'], message?: string) => {
+        if (!signal.aborted) setState({ status: 'error', tv, code, wake: { ...report, failedStep: step, message } });
+      };
+
+      // 1. Telefonun ağını bul: paket bu ağın yayın adresine gider.
+      let phoneIp: string;
+      try {
+        const phone = parsePrivateIPv4(await getPhoneIpOnLan());
+        if (!phone.ok) throw new TvError('networkUnavailable');
+        phoneIp = phone.value;
+      } catch (error) {
+        if (toCode(error) !== 'cancelled') fail('networkUnavailable', 'network');
+        return;
+      }
+      report.targets = [subnetBroadcast(phoneIp), '255.255.255.255', tv.ipAddress];
+
+      // 2. Paketi birkaç tur gönder.
+      try {
+        for (let i = 0; i < WAKE_PACKET_REPEATS; i++) {
+          await sendMagicPacket(mac, report.targets);
+          report.rounds++;
+          await delay(WAKE_PACKET_GAP_MS, signal);
+        }
+      } catch (error) {
+        if (toCode(error) === 'cancelled') return;
+        if (report.rounds === 0) {
+          fail('wakeFailed', 'send', error instanceof Error ? error.message : String(error));
+          return;
+        }
+      }
+
+      // 3. TV'nin eski adresinde Smart Center açılana kadar bekle.
+      const started = Date.now();
+      try {
+        while (Date.now() - started < WAKE_TIMEOUT_MS) {
+          const probe = await probeSmartCenter({ ipAddress: tv.ipAddress, signal }).catch(() => null);
+          if (signal.aborted) return;
+          if (probe && isSmartCenterRunning(probe)) break;
+          await delay(WAKE_POLL_MS, signal);
+        }
+      } catch {
+        return; // yalnızca iptal (cancelled) buraya düşer
+      }
+      report.waitedSeconds = Math.round((Date.now() - started) / 1000);
+
+      // 4. TV açıldıysa bağlantı hemen kurulur; açılmadıysa connect ağı kimlikle tarar, bulamazsa ayrıntılı `wakeFailed` gösterir.
+      await connect(tv, { failureCode: 'wakeFailed', wakeReport: report });
+    },
+    [connect],
+  );
 
   /** Queues one key request and records its result. Never retried automatically (AGENTS.md). */
   const sendCommand = useCallback(
@@ -374,6 +511,8 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       state,
       connect,
       disconnect,
+      wake,
+      canWake,
       sendKey,
       sendTestCode,
       lastCommand,
@@ -389,6 +528,8 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       state,
       connect,
       disconnect,
+      wake,
+      canWake,
       sendKey,
       sendTestCode,
       lastCommand,

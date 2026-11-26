@@ -45,7 +45,7 @@ Add the following to Windows PATH:
 - Android local-network permission behavior changes by OS/API level. Check the current Android SDK behavior and Expo config plugin support when implementing discovery; do not blindly copy obsolete permission declarations.
 - iOS local network access requires the appropriate usage description and Bonjour service declarations when Bonjour is used. Explain the permission in context and request it only when the user starts discovery or connection.
 - iOS multicast discovery may require the relevant multicast entitlement/capability and Apple approval. Prefer a discovery method that does not require restricted multicast where feasible; verify on physical devices.
-- Handle denied/restricted permissions gracefully and provide manual IP entry where technically possible.
+- Handle denied/restricted permissions gracefully and provide manual IP entry where technically possible. (Decision 2026-11-20: manual IP entry removed; see §6.4.)
 - Test networking on physical Android and iOS devices on the same Wi-Fi as the TV. Simulators/emulators are useful for UI work, not sufficient for LAN acceptance.
 - Do not request broad permissions unrelated to a user-visible feature. Do not collect Wi-Fi credentials.
 
@@ -286,6 +286,8 @@ Keep protocol-specific parsing, HTTP transport and command mapping inside the ad
 
 ## Suggested Repository Areas (adapt to current structure)
 
+> Superseded by the actual layout in §6.3.
+
 - `src/app/`: Expo Router screens/routes.
 - `src/features/`: Home, discovery, remote, guide, apps and settings flows.
 - `src/domain/`: TV, channel, program, app and capability types.
@@ -320,3 +322,95 @@ Do not create this structure wholesale before reviewing the existing starter app
 - Accessibility labels and localization are present.
 - Appropriate checks were run and results reported accurately.
 - No unsupported compatibility, EPG or app-launch claims are made.
+
+---
+
+# 6. Current State (living summary — read this first, update it with every change)
+
+> Snapshot 2026-11-26. Short, factual summary of what exists, so a new change can start from here without
+> re-reading the whole history. Sections 1–5 above are the original plan; where they differ, this section wins.
+> Details: `README.md` (features, build), `docs/protocol-notes.md` (protocol), `docs/compatibility.md` (evidence),
+> `docs/play-store-plan.md` and `docs/store-listing.md` (release).
+
+## 6.1 Status
+
+- App name **"TV Kumanda – Smart Center"**, package `com.azatates.smarttvremote`, version 1.0.0. Android first; iOS builds but is not tested.
+- One verified TV: **TV-001 Toshiba 50UL2163DT, Vestel MB180** (`docs/compatibility.md`). Everything else is "may work".
+- Release: preparing Google Play (EAS Build, AAB, internal → closed test). Privacy policy is a static page on azatates.com: `/privacy/smart-tv-remote.html` (source kept outside this repo, in the website project).
+
+## 6.2 Verified protocol facts (TV-001)
+
+| What | How |
+|---|---|
+| Status / probe | `GET http://<ip>:56789/apps/SmartCenter` → 200, DIAL XML, `<state>running</state>` |
+| Keys | `POST /apps/SmartCenter`, `Content-Type: text/plain; charset=ISO-8859-1`, body `<?xml version='1.0' ?><remote><key code='NNNN'/></remote>` (same as the official app) |
+| Identity | `GET :56790/dd.xml` → UDN `uuid:00000000-0000-0000-0000-<12 hex>`; last 12 hex = MAC (used for Wake-on-LAN, not yet proven to wake the TV) |
+| Apps via DIAL | Netflix, AmazonInstantVideo (201 on launch). YouTube → 403. Unknown names → 404 (no catch-all) |
+| Apps via keys | YouTube 1062, Disney+ 1077, tabii 1080 |
+| Other verified keys | last channel 1034, favourites 1040, guide 1047, OK/channel list 1053, teletext 1060, football menu 1067, TV settings 1082, digits 1000–1009, volume 1016/1017, channel 1032/1033, mute 1013, home 1048 |
+| Not yet verified | menu 1066, source 1056, Web 1065, previous/next track 1027/1028, play 1025, stop 1049 |
+| Discovery | SSDP gets no reply; the app scans the phone's /24 on port 56789 instead |
+| Not available | Channel list / EPG to the phone (official app reads ~150 KB from TV port 7681; payload not captured yet), TOD launch |
+
+## 6.3 Architecture map (where things live)
+
+```text
+src/app/            Screens only (Expo Router tabs): index=Home, guide (empty), remote, apps, settings
+src/components/     Presentational pieces; no protocol knowledge (Turkish comments)
+src/domain/         Pure logic, no React/network: tv.ts (types, RemoteKey, TvErrorCode), ip-address.ts,
+                    saved-tvs.ts (add/update rules by identity), voice-commands.ts (TR/EN parser), wake.ts (UDN→MAC)
+src/protocols/smart-center/
+                    http.ts (ONLY place that does fetch; private IPv4 + allow-listed paths), probe.ts, send-key.ts
+                    (key codes, code tester), dial-apps.ts (DIAL + key-launched apps), app-catalog.ts (search),
+                    discover.ts (/24 scan), device-info.ts (dd.xml), diagnostics.ts (TEMPORARY)
+src/services/       connection-context.tsx (single source of truth: connection state, serialized request queue,
+                    connect / relocate by identity / wake / apps / last TV), saved-tvs-context.tsx, *-storage.ts
+                    (AsyncStorage), feedback.ts (haptics), voice-recognition.ts (expo-speech-recognition)
+src/i18n/           strings.ts (typed TR/EN keys), index.ts (useTranslation + language preference)
+modules/wake-on-lan Local Expo module (Kotlin, Android only): UDP magic packet to local addresses
+store/              Play icon and feature graphics; docs/store-listing.md has the texts
+```
+
+AsyncStorage keys: `smarttvremote.savedTvs.v1`, `.customApps.v1`, `.lastTvId.v1` (auto-connect; cleared on
+Disconnect), `.lastTvApps.v1` (offline view), `.language.v1`.
+
+## 6.4 Product decisions taken (do not undo without asking)
+
+- No manual IP entry: TVs are added only by Wi-Fi scan; identity (UDN) re-finds a TV whose IP changed.
+- Auto-connect to the last TV on start; Disconnect means "do not auto-connect".
+- Keys stay visible without a connection and show a warning instead of sending.
+- Remote: main page + More page (swipe left/right); media bar ⏮ ▶ ■ ⏭ + mute; no app shortcuts on the remote (Apps tab only).
+- Code tester ("Kod dene", 1000–9999, power 1012 blocked) is a permanent feature for other models.
+- Diagnostics in Settings is temporary and must be removed before the store release.
+- Voice commands: in-app mic, app language, **on-device recognition only** (Android 13+), "bir önceki kanal" = P−, "son kanal" = last channel (1034), power asks for confirmation.
+- Wake-on-LAN: "TV'yi aç" shown for the last TV when nothing is connected, or after unreachable/timeout/wakeFailed; failures show step-by-step details (`WakeReport`).
+- Language: device language by default, TR/EN selectable in Settings.
+- UI: single dark theme, orange accent `#FF7A2F`, letter badges instead of brand logos, no vendor branding.
+
+## 6.5 How to make common changes (keep the structure)
+
+- **New key:** add to `RemoteKey` (`domain/tv.ts`) → code in `SMART_CENTER_KEY_CODES` (`send-key.ts`, mark verified or not) → label in `keyNames` (`app/remote.tsx`) + `key.*` strings (TR and EN) → icon in `components/icon.tsx` if it gets a button → note in `docs/compatibility.md`.
+- **New app:** DIAL app → `DIAL_APPS` with `dialNames`; key-launched app → `dialNames: []` + `launchKey`; restricted (403) app with a key → both. Add voice aliases in `domain/voice-commands.ts` if the name is hard to recognise.
+- **New text:** always both `en` and `tr` in `i18n/strings.ts` (the type check fails otherwise); use `{name}` placeholders and `.replace` for values.
+- **Network access:** only through `smartCenterRequest` in `http.ts` (extend its path allow-list deliberately); never call `fetch` from screens.
+- **Native code:** prefer an Expo package already compatible with SDK 58; otherwise a local module under `modules/`. Any native change needs `prebuild --clean` (or EAS), and new permissions must be added to the privacy policy and `docs/play-store-plan.md`.
+- **Comments:** Turkish, explanatory, one sentence per line (no line break in the middle of a sentence). Done for `src/components/`; other folders still have English comments.
+
+## 6.6 Verify and build
+
+```bash
+echo '/// <reference types="expo/types" />' > expo-env.d.ts   # once (git-ignored)
+npx tsc --noEmit                                               # must print nothing
+cd android && ./gradlew assembleRelease                         # JS-only changes
+npx expo prebuild --clean                                       # after app.json / native / new package (then re-create android/local.properties)
+npx eas-cli@latest build -p android --profile preview|production   # EAS keeps the upload key
+```
+
+Report exactly what ran; a physical-TV result is only claimed when it was tested on TV-001.
+
+## 6.7 Open items
+
+- Test on the phone: voice commands, Wake-on-LAN (TV setting + Wi-Fi vs. UDN MAC), new swipe and retry behaviour.
+- Verify or remove: menu, source, Web, media keys.
+- Before release: remove Diagnostics, add `blockedPermissions` for READ/WRITE_EXTERNAL_STORAGE, remove unused deps, phone screenshots, fill the e-mail in the privacy policy.
+- Possible later: channel list via port 7681 (needs a capture), TOD key, IR blaster power-on, home-screen voice widget, hotspot support, unit tests (Jest) for `domain/*`.

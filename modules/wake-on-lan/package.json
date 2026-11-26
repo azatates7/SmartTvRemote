@@ -1,0 +1,7 @@
+{
+  "name": "wake-on-lan",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local Expo module: sends a Wake-on-LAN magic packet over UDP (Android).",
+  "main": "index.ts"
+}

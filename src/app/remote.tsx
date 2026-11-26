@@ -84,6 +84,7 @@ const errorKeys: Partial<Record<TvErrorCode, StringKey>> = {
   timeout: 'remote.error.timeout',
   unreachable: 'remote.error.unreachable',
   unsupported: 'remote.error.refused',
+  wakeFailed: 'wake.error.failed',
 };
 
 const DIGITS: RemoteKey[][] = [
@@ -108,7 +109,7 @@ function targetLabel(target: CommandTarget, t: T, apps: AppsState): string {
 
 export default function RemoteScreen() {
   const { t } = useTranslation();
-  const { state, lastCommand, sendKey, apps, connect, lastTv } = useConnection();
+  const { state, lastCommand, sendKey, apps, connect, lastTv, wake, canWake } = useConnection();
   const [numpadOpen, setNumpadOpen] = useState(false);
   const [page, setPage] = useState<'main' | 'more'>('main');
 
@@ -158,7 +159,7 @@ export default function RemoteScreen() {
     state.status === 'connected'
       ? `${t('remote.connectedTo')} ${state.tv.name}`
       : state.status === 'connecting'
-        ? t(state.searching ? 'connection.searching' : 'connection.connecting')
+        ? t(state.waking ? 'connection.waking' : state.searching ? 'connection.searching' : 'connection.connecting')
         : warning
           ? t('remote.notSent')
           : lastTv
@@ -181,7 +182,13 @@ export default function RemoteScreen() {
           </ThemedText>
         </View>
         {showConnect && lastTv ? (
-          <Button label={t('connection.connect')} onPress={() => connect(lastTv.tv)} />
+          <View style={styles.headerActions}>
+            <Button label={t('connection.connect')} onPress={() => connect(lastTv.tv)} />
+            {/* TV kapalı olabilir: son TV için açmayı denemeyi de sunuyoruz; TV cevap veriyorsa (unsupported) gösterilmez. */}
+            {canWake(lastTv.tv) && !(state.status === 'error' && state.code === 'unsupported') ? (
+              <Button label={t('wake.button')} variant="secondary" onPress={() => wake(lastTv.tv)} />
+            ) : null}
+          </View>
         ) : SMART_CENTER_KEY_CODES.power !== undefined ? (
           <Pressable
             onPress={confirmPower}
@@ -769,6 +776,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.accent,
+  },
+  headerActions: {
+    gap: Spacing.two,
   },
   header: {
     flexDirection: 'row',
